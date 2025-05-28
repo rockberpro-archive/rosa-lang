@@ -123,29 +123,40 @@ value returns [String valueType, String text]
 statement_if
    : 'if' OPEN_P condition CLOSE_P OPEN_C
         {
-            System.out.println("    goto label_true");
-            System.out.println("label_true:");
+            int labelTrue = counter++;
+            int labelFalse = counter++;
+            int labelEnd = counter++;
+
+            System.out.println("    ; if condition");
+            System.out.println("    if_icmpeq label_" + labelTrue);
+            System.out.println("    goto label_" + labelFalse);
+            System.out.println("label_" + labelTrue + ":");
         }
         ( statement )*
     CLOSE_C
         {
-            System.out.println("    goto label_end");
-            System.out.println("label_false:");
-            System.out.println("    ; end if block");
+            System.out.println("    goto label_" + labelEnd);
+            System.out.println("label_" + labelFalse + ":");
         }
     ( 'else if' OPEN_P condition CLOSE_P OPEN_C
         {
+            int labelTrueElseIf = counter++;
+            int labelFalseElseIf = counter++;
+
             System.out.println("    ; else if condition");
+            System.out.println("    if_icmpeq label_" + labelTrueElseIf);
+            System.out.println("    goto label_" + labelFalseElseIf);
+            System.out.println("label_" + labelTrueElseIf + ":");
         }
         ( statement )*
     CLOSE_C
         {
-            System.out.println("    goto label_end");
-            System.out.println("label_false:");
-            System.out.println("    ; end else if block");
+            System.out.println("    goto label_" + labelEnd);
+            System.out.println("label_" + labelFalseElseIf + ":");
         }
     )*
-    ( 'else' OPEN_C {
+    ( 'else' OPEN_C
+        {
             System.out.println("    ; else block");
         }
         ( statement )*
@@ -155,7 +166,7 @@ statement_if
         }
     )?
         {
-            System.out.println("label_end:");
+            System.out.println("label_" + labelEnd + ":"); // Rótulo para o fim do if-else
         }
    ;
 
@@ -202,14 +213,13 @@ condition
    : expression ( '==' | '!=' | '<' | '<=' | '>' | '>=' ) expression
         {
             switch ($text) {
-                case "==": System.out.println("    if_icmpeq label_true"); break;
-                case "!=": System.out.println("    if_icmpne label_true"); break;
-                case "<":  System.out.println("    if_icmplt label_true"); break;
-                case "<=": System.out.println("    if_icmple label_true"); break;
-                case ">":  System.out.println("    if_icmpgt label_true"); break;
-                case ">=": System.out.println("    if_icmpge label_true"); break;
+                case "==": System.out.println("    if_icmpeq label_" + counter); break;
+                case "!=": System.out.println("    if_icmpne label_" + counter); break;
+                case "<":  System.out.println("    if_icmplt label_" + counter); break;
+                case "<=": System.out.println("    if_icmple label_" + counter); break;
+                case ">":  System.out.println("    if_icmpgt label_" + counter); break;
+                case ">=": System.out.println("    if_icmpge label_" + counter); break;
             }
-            System.out.println("    goto label_false"); 
         }
    ;
 
