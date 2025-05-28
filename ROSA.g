@@ -129,16 +129,16 @@ statement_print
    : PRINT OPEN_P value CLOSE_P
         {
             System.out.println("    getstatic java/lang/System/out Ljava/io/PrintStream;");
-            if ($value.valueType == "STRING") {
+            if ($value.valueType.equals("STRING")) {
                 System.out.println("    ldc " + $value.text);
                 System.out.println("    invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V");
-            } else if ($value.valueType == "INT") {
+            } else if ($value.valueType.equals("INT")) {
                 System.out.println("    ldc " + $value.text);
                 System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
-            } else if ($value.valueType == "DOUBLE") {
+            } else if ($value.valueType.equals("DOUBLE")) {
                 System.out.println("    ldc2_w " + $value.text);
                 System.out.println("    invokevirtual java/io/PrintStream/println(D)V");
-            } else if ($value.valueType == "VAR") {
+            } else if ($value.valueType.equals("VAR")) {
                 Integer v = memory.get($value.text);
                 if (v != null) {
                     System.out.println("    iload " + v);
@@ -189,7 +189,9 @@ factor
               if (v != null)  System.out.println("    iload " + v.intValue());
               else System.err.println("undefined variable " + $VAR.text);
             }
-
-
+   |   STRING
+            { System.out.println("    ldc " + $STRING.text); }
+   |   DOUBLE
+            { System.out.println("    ldc2_w " + $DOUBLE.text); }
    |   OPEN_P expression CLOSE_P
    ;
