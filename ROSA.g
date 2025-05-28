@@ -1,0 +1,160 @@
+﻿grammar ROSA;
+
+
+/*---------------- COMPILER INTERNALS ----------------*/
+
+
+@header
+{
+   import java.util.Map;
+   import java.util.LinkedHashMap;
+}
+
+
+@members
+{
+   Map<String, Integer> memory = new LinkedHashMap<String, Integer>();
+   Integer counter = 1;
+
+
+   public static void main(String[] args) throws Exception
+   {
+       ANTLRInputStream input = new ANTLRInputStream(System.in);
+       ROSALexer lexer = new ROSALexer(input);
+       CommonTokenStream tokens = new CommonTokenStream(lexer);
+       ROSAParser parser = new ROSAParser(tokens);
+       parser.program();
+   }
+}
+
+
+/*---------------- LEXER RULES ----------------*/
+
+
+PLUS      : '+' ;
+MINUS     : '-' ;
+TIMES     : '*' ;
+OVER      : '/' ;
+REMAINDER : '%' ;
+OPEN_C    : '{' ;
+CLOSE_C   : '}' ;
+OPEN_P    : '(' ;
+CLOSE_P   : ')' ;
+ATTRIB    : '=' ;
+
+
+MAIN      : 'main' ;
+PRINT     : 'print' ;
+TEXTCOLOR : 'textcolor';
+
+
+VAR     : 'a'..'z'+ ;
+NUM     : '0'..'9'+ ;
+NL      : ('\r')? '\n' ;
+SPACE   : (' '|'\t')+ { skip(); } ;
+STRING  : '"' ('\\' . | ~('\\'|'"'))* '"' ;
+
+
+/*---------------- PARSER RULES ----------------*/
+
+
+program
+   :  main
+   ;
+
+
+main
+   :  MAIN OPEN_P CLOSE_P OPEN_C
+           {
+               System.out.println(".source ROSATest.j");
+               System.out.println(".class  public ROSATest");
+               System.out.println(".super  java/lang/Object\n");
+               System.out.println(".method public <init>()V");
+               System.out.println("    aload_0");
+               System.out.println("    invokenonvirtual java/lang/Object/<init>()V");
+               System.out.println("    return");
+               System.out.println(".end method\n");
+               System.out.println(".method public static main([Ljava/lang/String;)V\n");
+           }
+       ( statement )* CLOSE_C NL
+           {
+               System.out.println("    return");
+               System.out.println(".limit stack 20");
+               System.out.println(".limit locals 20");
+               System.out.println(".end method");
+           }
+   ;
+
+
+statement
+   : NL                  |
+     assignment          |
+     statement_print     |
+     statement_textcolor
+   ;
+
+
+
+
+assignment
+   :
+       VAR ATTRIB ( expression )
+       {
+           if (!memory.containsKey($VAR.text)) memory.put($VAR.text, counter++);
+           System.out.println("    istore " + memory.get($VAR.text));
+       }
+   ;
+
+
+statement_print
+   : PRINT OPEN_P STRING CLOSE_P
+        {
+            System.out.println("    getstatic java/lang/System/out Ljava/io/PrintStream;");
+            System.out.println("    ldc " + $STRING.text);
+            System.out.println("    invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V");
+        }
+   ;
+
+
+statement_textcolor
+   : TEXTCOLOR OPEN_P NUM CLOSE_P
+            {
+                int color = Integer.parseInt($NUM.text);
+                if (color >= 0 && color <= 16) {
+                    System.out.println("    getstatic java/lang/System/out Ljava/io/PrintStream;");
+                    System.out.println("    ldc \"\\u001B[3" + color + "m\"");
+                    System.out.println("    invokevirtual java/io/PrintStream/print(Ljava/lang/String;)V");
+                } else {
+                    throw new IllegalArgumentException("Invalid color code: " + color);
+                }
+            }
+   ;
+
+
+expression
+   :   term ( op = ( PLUS | MINUS ) term
+           { System.out.println(($op.type == PLUS) ? "    iadd" : "    isub"); }
+       )*
+   ;
+
+
+term
+   :   factor ( op = ( TIMES | OVER ) factor
+            { System.out.println(($op.type == TIMES) ? "    imul" : "    idiv"); }
+       )*
+   ;
+
+
+factor
+   :   NUM
+            { System.out.println("    ldc " + $NUM.text); }
+   |   VAR
+            {
+              Integer v = memory.get($VAR.text);
+              if (v != null)  System.out.println("    iload " + v.intValue());
+              else System.err.println("undefined variable " + $VAR.text);
+            }
+
+
+   |   OPEN_P expression CLOSE_P
+   ;
