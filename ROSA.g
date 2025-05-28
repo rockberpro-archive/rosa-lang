@@ -107,6 +107,24 @@ assignment
    ;
 
 
+value returns [String valueType, String text]
+   : STRING { $valueType = "STRING"; $text = $STRING.text; }
+   | NUM    { $valueType = "INT";    $text = $NUM.text; }
+   | DOUBLE { $valueType = "DOUBLE"; $text = $DOUBLE.text; }
+   | VAR    {
+                Integer v = memory.get($VAR.text);
+                if (v != null) {
+                    $valueType = "VAR";
+                    $text = $VAR.text;
+                } else {
+                    System.err.println("undefined variable " + $VAR.text);
+                    $valueType = "UNDEF";
+                    $text = $VAR.text;
+                }
+            }
+   ;
+
+
 statement_print
    : PRINT OPEN_P value CLOSE_P
         {
@@ -120,15 +138,16 @@ statement_print
             } else if ($value.valueType == "DOUBLE") {
                 System.out.println("    ldc2_w " + $value.text);
                 System.out.println("    invokevirtual java/io/PrintStream/println(D)V");
+            } else if ($value.valueType == "VAR") {
+                Integer v = memory.get($value.text);
+                if (v != null) {
+                    System.out.println("    iload " + v);
+                    System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
+                } else {
+                    System.err.println("undefined variable " + $value.text);
+                }
             }
         }
-   ;
-
-
-value returns [String valueType, String text]
-   : STRING { $valueType = "STRING"; $text = $STRING.text; }
-   | NUM { $valueType = "INT"; $text = $NUM.text; }
-   | DOUBLE { $valueType = "DOUBLE"; $text = $DOUBLE.text; }
    ;
 
 
