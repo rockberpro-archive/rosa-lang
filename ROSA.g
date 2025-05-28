@@ -140,19 +140,19 @@ statement_if
         }
     ( 'or' OPEN_P condition CLOSE_P OPEN_C
         {
-            int label_trueElseIf = counter++;
-            int label_falseElseIf = counter++;
+            int label_true_elseIf = counter++;
+            int label_false_elseIf = counter++;
 
             System.out.println("    ; else if condition");
-            System.out.println("    if_icmpeq label_" + label_trueElseIf);
-            System.out.println("    goto label_" + label_falseElseIf);
-            System.out.println("label_" + label_trueElseIf + ":");
+            System.out.println("    if_icmpeq label_" + label_true_elseIf);
+            System.out.println("    goto label_" + label_false_elseIf);
+            System.out.println("label_" + label_true_elseIf + ":");
         }
         ( statement )*
     CLOSE_C
         {
             System.out.println("    goto label_" + label_end);
-            System.out.println("label_" + label_falseElseIf + ":");
+            System.out.println("label_" + label_false_elseIf + ":");
         }
     )*
     ( 'not' OPEN_C
