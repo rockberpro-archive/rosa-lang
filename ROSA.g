@@ -207,16 +207,17 @@ statement_textcolor
 
 condition
    : expression ( '==' | '!=' | '<' | '<=' | '>' | '>=' ) expression
-         {
-             switch ($text) {
-                 case "==": System.out.println("    if_icmpeq label_true"); break;
-                 case "!=": System.out.println("    if_icmpne label_true"); break;
-                 case "<":  System.out.println("    if_icmplt label_true"); break;
-                 case "<=": System.out.println("    if_icmple label_true"); break;
-                 case ">":  System.out.println("    if_icmpgt label_true"); break;
-                 case ">=": System.out.println("    if_icmpge label_true"); break;
-             }
-         }
+        {
+            switch ($text) {
+                case "==": System.out.println("    if_icmpeq label_true"); break;
+                case "!=": System.out.println("    if_icmpne label_true"); break;
+                case "<":  System.out.println("    if_icmplt label_true"); break;
+                case "<=": System.out.println("    if_icmple label_true"); break;
+                case ">":  System.out.println("    if_icmpgt label_true"); break;
+                case ">=": System.out.println("    if_icmpge label_true"); break;
+            }
+            System.out.println("    goto label_false"); 
+        }
    ;
 
 expression
