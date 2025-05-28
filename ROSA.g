@@ -86,7 +86,6 @@ main
            }
    ;
 
-
 statement
    : NL                  |
      assignment          |
@@ -94,9 +93,6 @@ statement
      statement_textcolor |
      statement_if
    ;
-
-
-
 
 assignment
    :
@@ -106,7 +102,6 @@ assignment
            System.out.println("    istore " + memory.get($VAR.text));
        }
    ;
-
 
 value returns [String valueType, String text]
    : STRING { $valueType = "STRING"; $text = $STRING.text; }
@@ -164,7 +159,6 @@ statement_if
         }
    ;
 
-
 statement_print
    : PRINT OPEN_P value CLOSE_P
         {
@@ -189,7 +183,6 @@ statement_print
             }
         }
    ;
-
 
 statement_textcolor
    : TEXTCOLOR OPEN_P NUM CLOSE_P
@@ -226,13 +219,11 @@ expression
        )*
    ;
 
-
 term
    :   factor ( op = ( TIMES | OVER ) factor
             { System.out.println(($op.type == TIMES) ? "    imul" : "    idiv"); }
        )*
    ;
-
 
 factor
    :   NUM
