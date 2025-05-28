@@ -53,6 +53,7 @@ NUM     : '0'..'9'+ ;
 NL      : ('\r')? '\n' ;
 SPACE   : (' '|'\t')+ { skip(); } ;
 STRING  : '"' ('\\' . | ~('\\'|'"'))* '"' ;
+DOUBLE  : ('0'..'9')+ '.' ('0'..'9')+ ;
 
 
 /*---------------- PARSER RULES ----------------*/
@@ -107,12 +108,27 @@ assignment
 
 
 statement_print
-   : PRINT OPEN_P STRING CLOSE_P
+   : PRINT OPEN_P value CLOSE_P
         {
             System.out.println("    getstatic java/lang/System/out Ljava/io/PrintStream;");
-            System.out.println("    ldc " + $STRING.text);
-            System.out.println("    invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V");
+            if ($value.valueType == "STRING") {
+                System.out.println("    ldc " + $value.text);
+                System.out.println("    invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V");
+            } else if ($value.valueType == "INT") {
+                System.out.println("    ldc " + $value.text);
+                System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
+            } else if ($value.valueType == "DOUBLE") {
+                System.out.println("    ldc2_w " + $value.text);
+                System.out.println("    invokevirtual java/io/PrintStream/println(D)V");
+            }
         }
+   ;
+
+
+value returns [String valueType, String text]
+   : STRING { $valueType = "STRING"; $text = $STRING.text; }
+   | NUM { $valueType = "INT"; $text = $NUM.text; }
+   | DOUBLE { $valueType = "DOUBLE"; $text = $DOUBLE.text; }
    ;
 
 
