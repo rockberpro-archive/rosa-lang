@@ -91,7 +91,8 @@ statement
    : NL                  |
      assignment          |
      statement_print     |
-     statement_textcolor
+     statement_textcolor |
+     statement_if
    ;
 
 
@@ -122,6 +123,45 @@ value returns [String valueType, String text]
                     $text = $VAR.text;
                 }
             }
+   ;
+
+statement_if
+   : 'if' OPEN_P condition CLOSE_P OPEN_C
+        {
+            System.out.println("    goto label_true");
+            System.out.println("label_true:");
+        }
+        ( statement )*
+    CLOSE_C
+        {
+            System.out.println("    goto label_end");
+            System.out.println("label_false:");
+            System.out.println("    ; end if block");
+        }
+    ( 'else if' OPEN_P condition CLOSE_P OPEN_C
+        {
+            System.out.println("    ; else if condition");
+        }
+        ( statement )*
+    CLOSE_C
+        {
+            System.out.println("    goto label_end");
+            System.out.println("label_false:");
+            System.out.println("    ; end else if block");
+        }
+    )*
+    ( 'else' OPEN_C {
+            System.out.println("    ; else block");
+        }
+        ( statement )*
+        CLOSE_C
+        {
+            System.out.println("    ; end else block");
+        }
+    )?
+        {
+            System.out.println("label_end:");
+        }
    ;
 
 
@@ -165,6 +205,19 @@ statement_textcolor
             }
    ;
 
+condition
+   : expression ( '==' | '!=' | '<' | '<=' | '>' | '>=' ) expression
+         {
+             switch ($text) {
+                 case "==": System.out.println("    if_icmpeq label_true"); break;
+                 case "!=": System.out.println("    if_icmpne label_true"); break;
+                 case "<":  System.out.println("    if_icmplt label_true"); break;
+                 case "<=": System.out.println("    if_icmple label_true"); break;
+                 case ">":  System.out.println("    if_icmpgt label_true"); break;
+                 case ">=": System.out.println("    if_icmpge label_true"); break;
+             }
+         }
+   ;
 
 expression
    :   term ( op = ( PLUS | MINUS ) term
