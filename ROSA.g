@@ -123,36 +123,36 @@ value returns [String valueType, String text]
 statement_if
    : 'if' OPEN_P condition CLOSE_P OPEN_C
         {
-            int labelTrue = counter++;
-            int labelFalse = counter++;
-            int labelEnd = counter++;
+            int label_true = counter++;
+            int label_false = counter++;
+            int label_end = counter++;
 
             System.out.println("    ; if condition");
-            System.out.println("    if_icmpeq label_" + labelTrue);
-            System.out.println("    goto label_" + labelFalse);
-            System.out.println("label_" + labelTrue + ":");
+            System.out.println("    if_icmpeq label_" + label_true);
+            System.out.println("    goto label_" + label_false);
+            System.out.println("label_" + label_true + ":");
         }
         ( statement )*
     CLOSE_C
         {
-            System.out.println("    goto label_" + labelEnd);
-            System.out.println("label_" + labelFalse + ":");
+            System.out.println("    goto label_" + label_end);
+            System.out.println("label_" + label_false + ":");
         }
     ( 'else if' OPEN_P condition CLOSE_P OPEN_C
         {
-            int labelTrueElseIf = counter++;
-            int labelFalseElseIf = counter++;
+            int label_trueElseIf = counter++;
+            int label_falseElseIf = counter++;
 
             System.out.println("    ; else if condition");
-            System.out.println("    if_icmpeq label_" + labelTrueElseIf);
-            System.out.println("    goto label_" + labelFalseElseIf);
-            System.out.println("label_" + labelTrueElseIf + ":");
+            System.out.println("    if_icmpeq label_" + label_trueElseIf);
+            System.out.println("    goto label_" + label_falseElseIf);
+            System.out.println("label_" + label_trueElseIf + ":");
         }
         ( statement )*
     CLOSE_C
         {
-            System.out.println("    goto label_" + labelEnd);
-            System.out.println("label_" + labelFalseElseIf + ":");
+            System.out.println("    goto label_" + label_end);
+            System.out.println("label_" + label_falseElseIf + ":");
         }
     )*
     ( 'else' OPEN_C
@@ -166,7 +166,7 @@ statement_if
         }
     )?
         {
-            System.out.println("label_" + labelEnd + ":"); // Rótulo para o fim do if-else
+            System.out.println("label_" + label_end + ":"); // Rótulo para o fim do if-else
         }
    ;
 
