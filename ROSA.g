@@ -86,16 +86,13 @@ main
            }
    ;
 
-
 statement
    : NL                  |
      assignment          |
      statement_print     |
-     statement_textcolor
+     statement_textcolor |
+     statement_if
    ;
-
-
-
 
 assignment
    :
@@ -105,7 +102,6 @@ assignment
            System.out.println("    istore " + memory.get($VAR.text));
        }
    ;
-
 
 value returns [String valueType, String text]
    : STRING { $valueType = "STRING"; $text = $STRING.text; }
@@ -124,6 +120,55 @@ value returns [String valueType, String text]
             }
    ;
 
+statement_if
+   : 'is' OPEN_P condition CLOSE_P OPEN_C
+        {
+            int label_true = counter++;
+            int label_false = counter++;
+            int label_end = counter++;
+
+            System.out.println("    ; if condition");
+            System.out.println("    if_icmpeq label_" + label_true);
+            System.out.println("    goto label_" + label_false);
+            System.out.println("label_" + label_true + ":");
+        }
+        ( statement )*
+    CLOSE_C
+        {
+            System.out.println("    goto label_" + label_end);
+            System.out.println("label_" + label_false + ":");
+        }
+    ( 'or' OPEN_P condition CLOSE_P OPEN_C
+        {
+            int label_trueElseIf = counter++;
+            int label_falseElseIf = counter++;
+
+            System.out.println("    ; else if condition");
+            System.out.println("    if_icmpeq label_" + label_trueElseIf);
+            System.out.println("    goto label_" + label_falseElseIf);
+            System.out.println("label_" + label_trueElseIf + ":");
+        }
+        ( statement )*
+    CLOSE_C
+        {
+            System.out.println("    goto label_" + label_end);
+            System.out.println("label_" + label_falseElseIf + ":");
+        }
+    )*
+    ( 'not' OPEN_C
+        {
+            System.out.println("    ; else block");
+        }
+        ( statement )*
+        CLOSE_C
+        {
+            System.out.println("    ; end else block");
+        }
+    )?
+        {
+            System.out.println("label_" + label_end + ":"); // Rótulo para o fim do if-else
+        }
+   ;
 
 statement_print
    : PRINT OPEN_P value CLOSE_P
@@ -150,7 +195,6 @@ statement_print
         }
    ;
 
-
 statement_textcolor
    : TEXTCOLOR OPEN_P NUM CLOSE_P
             {
@@ -165,6 +209,19 @@ statement_textcolor
             }
    ;
 
+condition
+   : expression ( '==' | '!=' | '<' | '<=' | '>' | '>=' ) expression
+        {
+            switch ($text) {
+                case "==": System.out.println("    if_icmpeq label_" + counter); break;
+                case "!=": System.out.println("    if_icmpne label_" + counter); break;
+                case "<":  System.out.println("    if_icmplt label_" + counter); break;
+                case "<=": System.out.println("    if_icmple label_" + counter); break;
+                case ">":  System.out.println("    if_icmpgt label_" + counter); break;
+                case ">=": System.out.println("    if_icmpge label_" + counter); break;
+            }
+        }
+   ;
 
 expression
    :   term ( op = ( PLUS | MINUS ) term
@@ -172,13 +229,11 @@ expression
        )*
    ;
 
-
 term
    :   factor ( op = ( TIMES | OVER ) factor
             { System.out.println(($op.type == TIMES) ? "    imul" : "    idiv"); }
        )*
    ;
-
 
 factor
    :   NUM
