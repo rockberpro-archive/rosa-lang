@@ -121,7 +121,7 @@ value returns [String valueType, String text]
    ;
 
 statement_if
-   : 'if' OPEN_P condition CLOSE_P OPEN_C
+   : 'is' OPEN_P condition CLOSE_P OPEN_C
         {
             int label_true = counter++;
             int label_false = counter++;
@@ -138,7 +138,7 @@ statement_if
             System.out.println("    goto label_" + label_end);
             System.out.println("label_" + label_false + ":");
         }
-    ( 'else if' OPEN_P condition CLOSE_P OPEN_C
+    ( 'or' OPEN_P condition CLOSE_P OPEN_C
         {
             int label_trueElseIf = counter++;
             int label_falseElseIf = counter++;
@@ -155,7 +155,7 @@ statement_if
             System.out.println("label_" + label_falseElseIf + ":");
         }
     )*
-    ( 'else' OPEN_C
+    ( 'not' OPEN_C
         {
             System.out.println("    ; else block");
         }
