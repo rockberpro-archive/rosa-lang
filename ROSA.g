@@ -91,7 +91,8 @@ statement
      assignment          |
      statement_print     |
      statement_textcolor |
-     statement_if
+     statement_if        |
+     statement_while
    ;
 
 assignment
@@ -167,6 +168,22 @@ statement_if
     )?
         {
             System.out.println("label_" + label_end + ":"); // Rótulo para o fim do if-else
+        }
+   ;
+
+statement_while
+   : 'while' OPEN_P condition CLOSE_P OPEN_C
+        {
+            int label_start = counter++;
+            int label_end = counter++;
+
+            System.out.println("label_" + label_start + ":");
+        }
+        ( statement )*
+    CLOSE_C
+        {
+            System.out.println("    goto label_" + label_start);
+            System.out.println("label_" + label_end + ":");
         }
    ;
 
