@@ -178,6 +178,7 @@ statement_while
             int label_end = counter++;
 
             System.out.println("label_" + label_start + ":");
+            System.out.println("    if_icmpge label_" + label_end);
         }
         ( statement )*
     CLOSE_C
