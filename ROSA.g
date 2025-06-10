@@ -172,7 +172,7 @@ statement_if
    ;
 
 statement_while
-   : 'while' OPEN_P
+   : 'aslong' OPEN_P
         {
             int label_start = counter++;
             int label_end = counter++;
