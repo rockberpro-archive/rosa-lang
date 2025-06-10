@@ -172,19 +172,21 @@ statement_if
    ;
 
 statement_while
-   : 'while' OPEN_P condition CLOSE_P OPEN_C
+   : 'while' OPEN_P
         {
             int label_start = counter++;
             int label_end = counter++;
-
             System.out.println("label_" + label_start + ":");
-            System.out.println("    if_icmpge label_" + label_end);
+        }
+        condition CLOSE_P OPEN_C
+        {
+            System.out.println("    if_icmpge label_" + (counter - 1));
         }
         ( statement )*
     CLOSE_C
         {
-            System.out.println("    goto label_" + label_start);
-            System.out.println("label_" + label_end + ":");
+            System.out.println("    goto label_" + (counter - 2));
+            System.out.println("label_" + (counter - 1) + ":");
         }
    ;
 
