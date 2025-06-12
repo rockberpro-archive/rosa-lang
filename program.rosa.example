@@ -7,20 +7,20 @@ procedure times() {
 }
 
 main() {
-    sum = call sum()
-    times = call times()
+    int sum = call sum()
+    int times = call times()
     print(sum)
     print(times)
 
-    x = 0
+    int x = 0
     aslong(x <= 10) {
         x = x + 1
         print(x)
     }
 
-    a = 1
-    b = 2
-    c = a + b
+    int a = 1
+    int b = 2
+    int c = a + b
     is (c == 3) {
         print("c is 3")
     }
