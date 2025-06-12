@@ -1,4 +1,18 @@
-main() {
+procedure sum() {
+    return 5 + 10
+}
+
+procedure times() {
+    return 2 * 5
+}
+
+main()
+{
+    sum = call sum()
+    times = call times()
+    print(sum)
+    print(times)
+
     x = 0
     aslong(x <= 10) {
         x = x + 1
@@ -10,11 +24,14 @@ main() {
     c = a + b
     is (c == 3) {
         print("c is 3")
-    } or (c == 4) {
+    }
+    or (c == 4) {
         print("c is 4")
-    } or (c == 5) {
+    }
+    or (c == 5) {
         print("c is 5")
-    } not {
+    }
+    not {
         print("c is something else")
     }
 }
