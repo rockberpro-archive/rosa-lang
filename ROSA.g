@@ -358,6 +358,22 @@ statement_print
                 } else {
                     System.err.println("undefined variable " + $value.text);
                 }
+            } else if ($value.valueType.equals("STRING_VAR")) {
+                Integer v = memory.get($value.text);
+                if (v != null) {
+                    System.out.println("    aload " + v);
+                    System.out.println("    invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V");
+                } else {
+                    System.err.println("undefined variable " + $value.text);
+                }
+            } else if ($value.valueType.equals("DOUBLE_VAR")) {
+                Integer v = memory.get($value.text);
+                if (v != null) {
+                    System.out.println("    dload " + v);
+                    System.out.println("    invokevirtual java/io/PrintStream/println(D)V");
+                } else {
+                    System.err.println("undefined variable " + $value.text);
+                }
             } else if ($value.valueType.equals("FUNCTION_CALL")) {
                 // A função já foi chamada e o resultado está na pilha
                 System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
