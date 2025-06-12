@@ -208,7 +208,8 @@ typed_assignment
    | DOUBLE_TYPE VAR ATTRIB expression
        {
            if (!memory.containsKey($VAR.text)) {
-               memory.put($VAR.text, counter++);
+               memory.put($VAR.text, counter);
+               counter += 2; // Double ocupa 2 slots
                variableTypes.put($VAR.text, "double");
            }
            if (inFunction) {
@@ -241,7 +242,14 @@ value returns [String valueType, String text]
    | VAR    {
                 Integer v = memory.get($VAR.text);
                 if (v != null) {
-                    $valueType = "VAR";
+                    String varType = variableTypes.get($VAR.text);
+                    if (varType != null && varType.equals("double")) {
+                        $valueType = "DOUBLE_VAR";
+                    } else if (varType != null && varType.equals("string")) {
+                        $valueType = "STRING_VAR";
+                    } else {
+                        $valueType = "VAR";
+                    }
                     $text = $VAR.text;
                 } else {
                     System.err.println("undefined variable " + $VAR.text);
@@ -336,8 +344,17 @@ statement_print
             } else if ($value.valueType.equals("VAR")) {
                 Integer v = memory.get($value.text);
                 if (v != null) {
-                    System.out.println("    iload " + v);
-                    System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
+                    String varType = variableTypes.get($value.text);
+                    if (varType != null && varType.equals("double")) {
+                        System.out.println("    dload " + v);
+                        System.out.println("    invokevirtual java/io/PrintStream/println(D)V");
+                    } else if (varType != null && varType.equals("string")) {
+                        System.out.println("    aload " + v);
+                        System.out.println("    invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V");
+                    } else {
+                        System.out.println("    iload " + v);
+                        System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
+                    }
                 } else {
                     System.err.println("undefined variable " + $value.text);
                 }
