@@ -15,9 +15,10 @@
 {
    Map<String, Integer> memory = new LinkedHashMap<String, Integer>();
    Map<String, Integer> functions = new LinkedHashMap<String, Integer>();
+   Map<String, String> functionBodies = new LinkedHashMap<String, String>();
    Integer counter = 1;
    Integer functionCounter = 1;
-
+   boolean inFunction = false;
 
    public static void main(String[] args) throws Exception
    {
@@ -65,28 +66,36 @@ DOUBLE  : ('0'..'9')+ '.' ('0'..'9')+ ;
 /*---------------- PARSER RULES ----------------*/
 
 program
-   :  main
+   : (function_def)* main (function_def)*
+       {
+           // Gera as funções no final
+           for (String funcName : functions.keySet()) {
+               System.out.println(".method public static " + funcName + "()I");
+               System.out.println(".limit stack 20");
+               System.out.println(".limit locals 20");
+               System.out.println(functionBodies.get(funcName));
+               System.out.println("    ldc 0");
+               System.out.println("    ireturn");
+               System.out.println(".end method\n");
+           }
+       }
    ;
 
 function_def
-   : FUNCTION VAR OPEN_P (parameter_list)? CLOSE_P OPEN_C
+   : FUNCTION VAR OPEN_P (parameter_list)? CLOSE_P NL? OPEN_C
        {
            String funcName = $VAR.text;
            if (!functions.containsKey(funcName)) {
                functions.put(funcName, functionCounter++);
+               functionBodies.put(funcName, "");
            }
-           System.out.println(".method public static " + funcName + "()I");
-           System.out.println(".limit stack 20");
-           System.out.println(".limit locals 20");
+           inFunction = true;
        }
        (statement)*
        (return_statement)?
-   CLOSE_C
+   CLOSE_C NL?
        {
-           // Se não há return explícito, retorna 0
-           System.out.println("    ldc 0");
-           System.out.println("    ireturn");
-           System.out.println(".end method\n");
+           inFunction = false;
        }
    ;
 
@@ -95,10 +104,7 @@ parameter_list
    ;
 
 return_statement
-   : RETURN expression
-       {
-           System.out.println("    ireturn");
-       }
+   : RETURN expression NL?
    ;
 
 function_call returns [String valueType, String text]
@@ -123,7 +129,7 @@ argument_list
 
 
 main
-   :  MAIN OPEN_P CLOSE_P OPEN_C
+   :  MAIN OPEN_P CLOSE_P NL? OPEN_C
            {
                System.out.println(".source ROSATest.j");
                System.out.println(".class  public ROSATest");
@@ -133,25 +139,25 @@ main
                System.out.println("    invokenonvirtual java/lang/Object/<init>()V");
                System.out.println("    return");
                System.out.println(".end method\n");
-               System.out.println(".method public static main([Ljava/lang/String;)V\n");
-           }
-       ( statement )* CLOSE_C NL
-           {
-               System.out.println("    return");
+               System.out.println(".method public static main([Ljava/lang/String;)V");
                System.out.println(".limit stack 20");
                System.out.println(".limit locals 20");
+           }
+       ( statement )* CLOSE_C NL?
+           {
+               System.out.println("    return");
                System.out.println(".end method");
            }
    ;
 
 statement
    : NL                  |
-     assignment          |
-     statement_print     |
-     statement_textcolor |
-     statement_if        |
-     statement_while     |
-     function_call
+     assignment NL?      |
+     statement_print NL? |
+     statement_textcolor NL? |
+     statement_if NL?    |
+     statement_while NL? |
+     function_call NL?
    ;
 
 assignment
@@ -271,6 +277,9 @@ statement_print
                 } else {
                     System.err.println("undefined variable " + $value.text);
                 }
+            } else if ($value.valueType.equals("FUNCTION_CALL")) {
+                // A função já foi chamada e o resultado está na pilha
+                System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
             }
         }
    ;
