@@ -14,6 +14,7 @@
 @members
 {
    Map<String, Integer> memory = new LinkedHashMap<String, Integer>();
+   Map<String, String> variableTypes = new LinkedHashMap<String, String>(); // Para armazenar tipos das variáveis
    Map<String, Integer> functions = new LinkedHashMap<String, Integer>();
    Map<String, String> functionBodies = new LinkedHashMap<String, String>();
    Integer counter = 1;
@@ -54,6 +55,11 @@ FUNCTION  : 'procedure' ;
 RETURN    : 'return' ;
 CALL      : 'call' ;
 COMMA     : ',' ;
+
+// Adicionar tokens para tipos
+INT_TYPE    : 'int' ;
+DOUBLE_TYPE : 'double' ;
+STRING_TYPE : 'string'  ;
 
 
 VAR     : 'a'..'z'+ ;
@@ -164,11 +170,12 @@ main
    ;
 
 statement
-   : assignment      |
-     statement_print |
-     statement_textcolor |
-     statement_if    |
-     statement_while |
+   : assignment           |
+     typed_assignment     |
+     statement_print      |
+     statement_textcolor  |
+     statement_if         |
+     statement_while      |
      function_call
    ;
 
@@ -177,7 +184,53 @@ assignment
        VAR ATTRIB ( expression )
        {
            if (!memory.containsKey($VAR.text)) memory.put($VAR.text, counter++);
-           System.out.println("    istore " + memory.get($VAR.text));
+           if (inFunction) {
+               functionBodyBuilder.append("    istore " + memory.get($VAR.text) + "\n");
+           } else {
+               System.out.println("    istore " + memory.get($VAR.text));
+           }
+       }
+   ;
+
+typed_assignment
+   : INT_TYPE VAR ATTRIB expression
+       {
+           if (!memory.containsKey($VAR.text)) {
+               memory.put($VAR.text, counter++);
+               variableTypes.put($VAR.text, "int");
+           }
+           if (inFunction) {
+               functionBodyBuilder.append("    istore " + memory.get($VAR.text) + "\n");
+           } else {
+               System.out.println("    istore " + memory.get($VAR.text));
+           }
+       }
+   | DOUBLE_TYPE VAR ATTRIB expression
+       {
+           if (!memory.containsKey($VAR.text)) {
+               memory.put($VAR.text, counter);
+               counter += 2; // Double ocupa 2 slots
+               variableTypes.put($VAR.text, "double");
+           }
+           if (inFunction) {
+               functionBodyBuilder.append("    dstore " + memory.get($VAR.text) + "\n");
+           } else {
+               System.out.println("    dstore " + memory.get($VAR.text));
+           }
+       }
+   | STRING_TYPE VAR ATTRIB STRING
+       {
+           if (!memory.containsKey($VAR.text)) {
+               memory.put($VAR.text, counter++);
+               variableTypes.put($VAR.text, "string");
+           }
+           if (inFunction) {
+               functionBodyBuilder.append("    ldc " + $STRING.text + "\n");
+               functionBodyBuilder.append("    astore " + memory.get($VAR.text) + "\n");
+           } else {
+               System.out.println("    ldc " + $STRING.text);
+               System.out.println("    astore " + memory.get($VAR.text));
+           }
        }
    ;
 
@@ -189,7 +242,14 @@ value returns [String valueType, String text]
    | VAR    {
                 Integer v = memory.get($VAR.text);
                 if (v != null) {
-                    $valueType = "VAR";
+                    String varType = variableTypes.get($VAR.text);
+                    if (varType != null && varType.equals("double")) {
+                        $valueType = "DOUBLE_VAR";
+                    } else if (varType != null && varType.equals("string")) {
+                        $valueType = "STRING_VAR";
+                    } else {
+                        $valueType = "VAR";
+                    }
                     $text = $VAR.text;
                 } else {
                     System.err.println("undefined variable " + $VAR.text);
@@ -284,8 +344,33 @@ statement_print
             } else if ($value.valueType.equals("VAR")) {
                 Integer v = memory.get($value.text);
                 if (v != null) {
-                    System.out.println("    iload " + v);
-                    System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
+                    String varType = variableTypes.get($value.text);
+                    if (varType != null && varType.equals("double")) {
+                        System.out.println("    dload " + v);
+                        System.out.println("    invokevirtual java/io/PrintStream/println(D)V");
+                    } else if (varType != null && varType.equals("string")) {
+                        System.out.println("    aload " + v);
+                        System.out.println("    invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V");
+                    } else {
+                        System.out.println("    iload " + v);
+                        System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
+                    }
+                } else {
+                    System.err.println("undefined variable " + $value.text);
+                }
+            } else if ($value.valueType.equals("STRING_VAR")) {
+                Integer v = memory.get($value.text);
+                if (v != null) {
+                    System.out.println("    aload " + v);
+                    System.out.println("    invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V");
+                } else {
+                    System.err.println("undefined variable " + $value.text);
+                }
+            } else if ($value.valueType.equals("DOUBLE_VAR")) {
+                Integer v = memory.get($value.text);
+                if (v != null) {
+                    System.out.println("    dload " + v);
+                    System.out.println("    invokevirtual java/io/PrintStream/println(D)V");
                 } else {
                     System.err.println("undefined variable " + $value.text);
                 }
@@ -361,10 +446,34 @@ factor
             {
                 Integer v = memory.get($VAR.text);
                 if (v != null) {
-                    if (inFunction) {
-                        functionBodyBuilder.append("    iload " + v.intValue() + "\n");
+                    String varType = variableTypes.get($VAR.text);
+                    if (varType != null) {
+                        if (varType.equals("double")) {
+                            if (inFunction) {
+                                functionBodyBuilder.append("    dload " + v.intValue() + "\n");
+                            } else {
+                                System.out.println("    dload " + v.intValue());
+                            }
+                        } else if (varType.equals("string")) {
+                            if (inFunction) {
+                                functionBodyBuilder.append("    aload " + v.intValue() + "\n");
+                            } else {
+                                System.out.println("    aload " + v.intValue());
+                            }
+                        } else {
+                            if (inFunction) {
+                                functionBodyBuilder.append("    iload " + v.intValue() + "\n");
+                            } else {
+                                System.out.println("    iload " + v.intValue());
+                            }
+                        }
                     } else {
-                        System.out.println("    iload " + v.intValue());
+                        // Tipo não definido, assume int
+                        if (inFunction) {
+                            functionBodyBuilder.append("    iload " + v.intValue() + "\n");
+                        } else {
+                            System.out.println("    iload " + v.intValue());
+                        }
                     }
                 } else {
                     System.err.println("undefined variable " + $VAR.text);
