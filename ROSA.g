@@ -14,8 +14,12 @@
 @members
 {
    Map<String, Integer> memory = new LinkedHashMap<String, Integer>();
+   Map<String, Integer> functions = new LinkedHashMap<String, Integer>();
+   Map<String, String> functionBodies = new LinkedHashMap<String, String>();
    Integer counter = 1;
-
+   Integer functionCounter = 1;
+   boolean inFunction = false;
+   StringBuilder functionBodyBuilder = new StringBuilder();
 
    public static void main(String[] args) throws Exception
    {
@@ -46,11 +50,15 @@ ATTRIB    : '=' ;
 MAIN      : 'main' ;
 PRINT     : 'print' ;
 TEXTCOLOR : 'textcolor';
+FUNCTION  : 'procedure' ;
+RETURN    : 'return' ;
+CALL      : 'call' ;
+COMMA     : ',' ;
 
 
 VAR     : 'a'..'z'+ ;
-NUM     : '0'..'9'+ ;
-NL      : ('\r')? '\n' ;
+NUM     : '0'..'9' + ;
+NL      : ('\r')? '\n' { skip(); } ;
 SPACE   : (' '|'\t')+ { skip(); } ;
 STRING  : '"' ('\\' . | ~('\\'|'"'))* '"' ;
 DOUBLE  : ('0'..'9')+ '.' ('0'..'9')+ ;
@@ -58,14 +66,83 @@ DOUBLE  : ('0'..'9')+ '.' ('0'..'9')+ ;
 
 /*---------------- PARSER RULES ----------------*/
 
-
 program
-   :  main
+   : NL* (function_def NL*)* main NL* (function_def NL*)*
+       {
+           // Gera as funções no final
+           for (String funcName : functions.keySet()) {
+               System.out.println(".method public static " + funcName + "()I");
+               System.out.println(".limit stack 20");
+               System.out.println(".limit locals 20");
+               System.out.println(functionBodies.get(funcName));
+               System.out.println("    ldc 0");
+               System.out.println("    ireturn");
+               System.out.println(".end method\n");
+           }
+       }
+   ;
+
+function_def
+   : FUNCTION VAR OPEN_P (parameter_list)? CLOSE_P NL* OPEN_C
+       {
+           String funcName = $VAR.text;
+           if (!functions.containsKey(funcName)) {
+               functions.put(funcName, functionCounter++);
+               functionBodies.put(funcName, "");
+           }
+           inFunction = true;
+           functionBodyBuilder = new StringBuilder();
+       }
+       NL* (statement NL*)*
+       (return_statement NL*)?
+   CLOSE_C
+       {
+           inFunction = false;
+           // Armazena o corpo da função para gerar depois
+           functionBodies.put($VAR.text, functionBodyBuilder.toString());
+       }
+   ;
+
+parameter_list
+   : VAR (COMMA VAR)*
+   ;
+
+return_statement
+   : RETURN expression
+       {
+           if (inFunction) {
+               functionBodyBuilder.append("    ireturn\n");
+           }
+       }
+   ;
+
+function_call returns [String valueType, String text]
+   : CALL VAR OPEN_P (argument_list)? CLOSE_P
+       {
+           String funcName = $VAR.text;
+           if (functions.containsKey(funcName) || inFunction) {
+               if (inFunction) {
+                   functionBodyBuilder.append("    invokestatic ROSATest/" + funcName + "()I\n");
+               } else {
+                   System.out.println("    invokestatic ROSATest/" + funcName + "()I");
+               }
+               $valueType = "FUNCTION_CALL";
+               $text = funcName;
+           } else {
+               System.err.println("undefined function " + funcName);
+               $valueType = "UNDEF";
+               $text = funcName;
+           }
+       }
+   ;
+
+argument_list
+   : expression (COMMA expression)*
    ;
 
 
 main
-   :  MAIN OPEN_P CLOSE_P OPEN_C
+   :  MAIN OPEN_P CLOSE_P NL* OPEN_C
            {
                System.out.println(".source ROSATest.j");
                System.out.println(".class  public ROSATest");
@@ -75,24 +152,24 @@ main
                System.out.println("    invokenonvirtual java/lang/Object/<init>()V");
                System.out.println("    return");
                System.out.println(".end method\n");
-               System.out.println(".method public static main([Ljava/lang/String;)V\n");
-           }
-       ( statement )* CLOSE_C NL
-           {
-               System.out.println("    return");
+               System.out.println(".method public static main([Ljava/lang/String;)V");
                System.out.println(".limit stack 20");
                System.out.println(".limit locals 20");
+           }
+       NL* ( statement NL* )* CLOSE_C
+           {
+               System.out.println("    return");
                System.out.println(".end method");
            }
    ;
 
 statement
-   : NL                  |
-     assignment          |
-     statement_print     |
+   : assignment      |
+     statement_print |
      statement_textcolor |
-     statement_if        |
-     statement_while
+     statement_if    |
+     statement_while |
+     function_call
    ;
 
 assignment
@@ -108,6 +185,7 @@ value returns [String valueType, String text]
    : STRING { $valueType = "STRING"; $text = $STRING.text; }
    | NUM    { $valueType = "INT";    $text = $NUM.text; }
    | DOUBLE { $valueType = "DOUBLE"; $text = $DOUBLE.text; }
+   | function_call { $valueType = $function_call.valueType; $text = $function_call.text; }
    | VAR    {
                 Integer v = memory.get($VAR.text);
                 if (v != null) {
@@ -211,6 +289,9 @@ statement_print
                 } else {
                     System.err.println("undefined variable " + $value.text);
                 }
+            } else if ($value.valueType.equals("FUNCTION_CALL")) {
+                // A função já foi chamada e o resultado está na pilha
+                System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
             }
         }
    ;
@@ -245,28 +326,66 @@ condition
 
 expression
    :   term ( op = ( PLUS | MINUS ) term
-           { System.out.println(($op.type == PLUS) ? "    iadd" : "    isub"); }
+           { 
+               if (inFunction) {
+                   functionBodyBuilder.append(($op.type == PLUS) ? "    iadd\n" : "    isub\n");
+               } else {
+                   System.out.println(($op.type == PLUS) ? "    iadd" : "    isub"); 
+               }
+           }
        )*
    ;
 
 term
    :   factor ( op = ( TIMES | OVER ) factor
-            { System.out.println(($op.type == TIMES) ? "    imul" : "    idiv"); }
+            { 
+                if (inFunction) {
+                    functionBodyBuilder.append(($op.type == TIMES) ? "    imul\n" : "    idiv\n");
+                } else {
+                    System.out.println(($op.type == TIMES) ? "    imul" : "    idiv"); 
+                }
+            }
        )*
    ;
 
 factor
    :   NUM
-            { System.out.println("    ldc " + $NUM.text); }
+            { 
+                if (inFunction) {
+                    functionBodyBuilder.append("    ldc " + $NUM.text + "\n");
+                } else {
+                    System.out.println("    ldc " + $NUM.text); 
+                }
+            }
    |   VAR
             {
-              Integer v = memory.get($VAR.text);
-              if (v != null)  System.out.println("    iload " + v.intValue());
-              else System.err.println("undefined variable " + $VAR.text);
+                Integer v = memory.get($VAR.text);
+                if (v != null) {
+                    if (inFunction) {
+                        functionBodyBuilder.append("    iload " + v.intValue() + "\n");
+                    } else {
+                        System.out.println("    iload " + v.intValue());
+                    }
+                } else {
+                    System.err.println("undefined variable " + $VAR.text);
+                }
             }
    |   STRING
-            { System.out.println("    ldc " + $STRING.text); }
+            { 
+                if (inFunction) {
+                    functionBodyBuilder.append("    ldc " + $STRING.text + "\n");
+                } else {
+                    System.out.println("    ldc " + $STRING.text); 
+                }
+            }
    |   DOUBLE
-            { System.out.println("    ldc2_w " + $DOUBLE.text); }
+            { 
+                if (inFunction) {
+                    functionBodyBuilder.append("    ldc2_w " + $DOUBLE.text + "\n");
+                } else {
+                    System.out.println("    ldc2_w " + $DOUBLE.text); 
+                }
+            }
+   |   function_call
    |   OPEN_P expression CLOSE_P
    ;
