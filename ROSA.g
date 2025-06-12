@@ -14,7 +14,9 @@
 @members
 {
    Map<String, Integer> memory = new LinkedHashMap<String, Integer>();
+   Map<String, Integer> functions = new LinkedHashMap<String, Integer>();
    Integer counter = 1;
+   Integer functionCounter = 1;
 
 
    public static void main(String[] args) throws Exception
@@ -46,10 +48,14 @@ ATTRIB    : '=' ;
 MAIN      : 'main' ;
 PRINT     : 'print' ;
 TEXTCOLOR : 'textcolor';
+FUNCTION  : 'function' ;
+RETURN    : 'return' ;
+CALL      : 'call' ;
+COMMA     : ',' ;
 
 
 VAR     : 'a'..'z'+ ;
-NUM     : '0'..'9'+ ;
+NUM     : '0'..'9' + ;
 NL      : ('\r')? '\n' ;
 SPACE   : (' '|'\t')+ { skip(); } ;
 STRING  : '"' ('\\' . | ~('\\'|'"'))* '"' ;
@@ -58,9 +64,61 @@ DOUBLE  : ('0'..'9')+ '.' ('0'..'9')+ ;
 
 /*---------------- PARSER RULES ----------------*/
 
-
 program
    :  main
+   ;
+
+function_def
+   : FUNCTION VAR OPEN_P (parameter_list)? CLOSE_P OPEN_C
+       {
+           String funcName = $VAR.text;
+           if (!functions.containsKey(funcName)) {
+               functions.put(funcName, functionCounter++);
+           }
+           System.out.println(".method public static " + funcName + "()I");
+           System.out.println(".limit stack 20");
+           System.out.println(".limit locals 20");
+       }
+       (statement)*
+       (return_statement)?
+   CLOSE_C
+       {
+           // Se não há return explícito, retorna 0
+           System.out.println("    ldc 0");
+           System.out.println("    ireturn");
+           System.out.println(".end method\n");
+       }
+   ;
+
+parameter_list
+   : VAR (COMMA VAR)*
+   ;
+
+return_statement
+   : RETURN expression
+       {
+           System.out.println("    ireturn");
+       }
+   ;
+
+function_call returns [String valueType, String text]
+   : CALL VAR OPEN_P (argument_list)? CLOSE_P
+       {
+           String funcName = $VAR.text;
+           if (functions.containsKey(funcName)) {
+               System.out.println("    invokestatic ROSATest/" + funcName + "()I");
+               $valueType = "FUNCTION_CALL";
+               $text = funcName;
+           } else {
+               System.err.println("undefined function " + funcName);
+               $valueType = "UNDEF";
+               $text = funcName;
+           }
+       }
+   ;
+
+argument_list
+   : expression (COMMA expression)*
    ;
 
 
@@ -92,7 +150,8 @@ statement
      statement_print     |
      statement_textcolor |
      statement_if        |
-     statement_while
+     statement_while     |
+     function_call
    ;
 
 assignment
@@ -108,6 +167,7 @@ value returns [String valueType, String text]
    : STRING { $valueType = "STRING"; $text = $STRING.text; }
    | NUM    { $valueType = "INT";    $text = $NUM.text; }
    | DOUBLE { $valueType = "DOUBLE"; $text = $DOUBLE.text; }
+   | function_call { $valueType = $function_call.valueType; $text = $function_call.text; }
    | VAR    {
                 Integer v = memory.get($VAR.text);
                 if (v != null) {
@@ -268,5 +328,7 @@ factor
             { System.out.println("    ldc " + $STRING.text); }
    |   DOUBLE
             { System.out.println("    ldc2_w " + $DOUBLE.text); }
+   |   function_call
+            // A chamada de função já gera o código bytecode necessário
    |   OPEN_P expression CLOSE_P
    ;
