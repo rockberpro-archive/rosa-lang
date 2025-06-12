@@ -19,6 +19,7 @@
    Integer counter = 1;
    Integer functionCounter = 1;
    boolean inFunction = false;
+   StringBuilder functionBodyBuilder = new StringBuilder();
 
    public static void main(String[] args) throws Exception
    {
@@ -90,12 +91,15 @@ function_def
                functionBodies.put(funcName, "");
            }
            inFunction = true;
+           functionBodyBuilder = new StringBuilder();
        }
        NL* (statement NL*)*
        (return_statement NL*)?
    CLOSE_C
        {
            inFunction = false;
+           // Armazena o corpo da função para gerar depois
+           functionBodies.put($VAR.text, functionBodyBuilder.toString());
        }
    ;
 
@@ -107,7 +111,7 @@ return_statement
    : RETURN expression
        {
            if (inFunction) {
-               System.out.println("    ireturn");
+               functionBodyBuilder.append("    ireturn\n");
            }
        }
    ;
@@ -116,8 +120,12 @@ function_call returns [String valueType, String text]
    : CALL VAR OPEN_P (argument_list)? CLOSE_P
        {
            String funcName = $VAR.text;
-           if (functions.containsKey(funcName)) {
-               System.out.println("    invokestatic ROSATest/" + funcName + "()I");
+           if (functions.containsKey(funcName) || inFunction) {
+               if (inFunction) {
+                   functionBodyBuilder.append("    invokestatic ROSATest/" + funcName + "()I\n");
+               } else {
+                   System.out.println("    invokestatic ROSATest/" + funcName + "()I");
+               }
                $valueType = "FUNCTION_CALL";
                $text = funcName;
            } else {
@@ -318,30 +326,66 @@ condition
 
 expression
    :   term ( op = ( PLUS | MINUS ) term
-           { System.out.println(($op.type == PLUS) ? "    iadd" : "    isub"); }
+           { 
+               if (inFunction) {
+                   functionBodyBuilder.append(($op.type == PLUS) ? "    iadd\n" : "    isub\n");
+               } else {
+                   System.out.println(($op.type == PLUS) ? "    iadd" : "    isub"); 
+               }
+           }
        )*
    ;
 
 term
    :   factor ( op = ( TIMES | OVER ) factor
-            { System.out.println(($op.type == TIMES) ? "    imul" : "    idiv"); }
+            { 
+                if (inFunction) {
+                    functionBodyBuilder.append(($op.type == TIMES) ? "    imul\n" : "    idiv\n");
+                } else {
+                    System.out.println(($op.type == TIMES) ? "    imul" : "    idiv"); 
+                }
+            }
        )*
    ;
 
 factor
    :   NUM
-            { System.out.println("    ldc " + $NUM.text); }
+            { 
+                if (inFunction) {
+                    functionBodyBuilder.append("    ldc " + $NUM.text + "\n");
+                } else {
+                    System.out.println("    ldc " + $NUM.text); 
+                }
+            }
    |   VAR
             {
-              Integer v = memory.get($VAR.text);
-              if (v != null)  System.out.println("    iload " + v.intValue());
-              else System.err.println("undefined variable " + $VAR.text);
+                Integer v = memory.get($VAR.text);
+                if (v != null) {
+                    if (inFunction) {
+                        functionBodyBuilder.append("    iload " + v.intValue() + "\n");
+                    } else {
+                        System.out.println("    iload " + v.intValue());
+                    }
+                } else {
+                    System.err.println("undefined variable " + $VAR.text);
+                }
             }
    |   STRING
-            { System.out.println("    ldc " + $STRING.text); }
+            { 
+                if (inFunction) {
+                    functionBodyBuilder.append("    ldc " + $STRING.text + "\n");
+                } else {
+                    System.out.println("    ldc " + $STRING.text); 
+                }
+            }
    |   DOUBLE
-            { System.out.println("    ldc2_w " + $DOUBLE.text); }
+            { 
+                if (inFunction) {
+                    functionBodyBuilder.append("    ldc2_w " + $DOUBLE.text + "\n");
+                } else {
+                    System.out.println("    ldc2_w " + $DOUBLE.text); 
+                }
+            }
    |   function_call
-            // A chamada de função já gera o código bytecode necessário
    |   OPEN_P expression CLOSE_P
    ;
