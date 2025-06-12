@@ -1,0 +1,7 @@
+main() {
+    x = 0
+    aslong(x <= 10) {
+        print(x)
+        x = x + 1
+    }
+}
