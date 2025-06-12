@@ -66,7 +66,7 @@ DOUBLE  : ('0'..'9')+ '.' ('0'..'9')+ ;
 /*---------------- PARSER RULES ----------------*/
 
 program
-   : (function_def)* main (function_def)*
+   : NL* (function_def NL*)* main NL* (function_def NL*)*
        {
            // Gera as funções no final
            for (String funcName : functions.keySet()) {
@@ -82,7 +82,7 @@ program
    ;
 
 function_def
-   : FUNCTION VAR OPEN_P (parameter_list)? CLOSE_P NL? OPEN_C
+   : FUNCTION VAR OPEN_P (parameter_list)? CLOSE_P NL* OPEN_C
        {
            String funcName = $VAR.text;
            if (!functions.containsKey(funcName)) {
@@ -91,9 +91,9 @@ function_def
            }
            inFunction = true;
        }
-       (statement)*
-       (return_statement)?
-   CLOSE_C NL?
+       NL* (statement NL*)*
+       (return_statement NL*)?
+   CLOSE_C
        {
            inFunction = false;
        }
@@ -104,7 +104,12 @@ parameter_list
    ;
 
 return_statement
-   : RETURN expression NL?
+   : RETURN expression
+       {
+           if (inFunction) {
+               System.out.println("    ireturn");
+           }
+       }
    ;
 
 function_call returns [String valueType, String text]
@@ -129,7 +134,7 @@ argument_list
 
 
 main
-   :  MAIN OPEN_P CLOSE_P NL? OPEN_C
+   :  MAIN OPEN_P CLOSE_P NL* OPEN_C
            {
                System.out.println(".source ROSATest.j");
                System.out.println(".class  public ROSATest");
@@ -143,7 +148,7 @@ main
                System.out.println(".limit stack 20");
                System.out.println(".limit locals 20");
            }
-       ( statement )* CLOSE_C NL?
+       NL* ( statement NL* )* CLOSE_C
            {
                System.out.println("    return");
                System.out.println(".end method");
@@ -151,13 +156,12 @@ main
    ;
 
 statement
-   : NL                  |
-     assignment NL?      |
-     statement_print NL? |
-     statement_textcolor NL? |
-     statement_if NL?    |
-     statement_while NL? |
-     function_call NL?
+   : assignment      |
+     statement_print |
+     statement_textcolor |
+     statement_if    |
+     statement_while |
+     function_call
    ;
 
 assignment
