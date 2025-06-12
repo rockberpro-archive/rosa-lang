@@ -50,7 +50,7 @@ ATTRIB    : '=' ;
 MAIN      : 'main' ;
 PRINT     : 'print' ;
 TEXTCOLOR : 'textcolor';
-FUNCTION  : 'function' ;
+FUNCTION  : 'procedure' ;
 RETURN    : 'return' ;
 CALL      : 'call' ;
 COMMA     : ',' ;
