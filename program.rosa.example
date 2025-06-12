@@ -6,8 +6,7 @@ procedure times() {
     return 2 * 5
 }
 
-main()
-{
+main() {
     sum = call sum()
     times = call times()
     print(sum)
