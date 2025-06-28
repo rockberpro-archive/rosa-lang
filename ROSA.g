@@ -65,6 +65,7 @@ ARRAY_TYPE  : 'array' ;
 
 // Tokens para operações de arrays
 PUSH        : 'push' ;
+POP         : 'pop' ;
 LENGTH      : 'length' ;
 
 
@@ -183,7 +184,8 @@ statement
      statement_if         |
      statement_while      |
      function_call        |
-     array_push
+     array_push           |
+     array_pop
    ;
 
 assignment
@@ -573,6 +575,35 @@ array_push
                System.out.println("    invokestatic java/lang/Integer/valueOf(I)Ljava/lang/Integer;");
                System.out.println("    invokevirtual java/util/ArrayList/add(Ljava/lang/Object;)Z");
                System.out.println("    pop"); // remove o boolean retornado
+           }
+       }
+   ;
+
+array_pop
+   : POP OPEN_P VAR CLOSE_P
+       {
+           // arr.remove(arr.size()-1) - remove último elemento
+           Integer v = memory.get($VAR.text);
+           if (v != null && variableTypes.get($VAR.text).equals("array")) {
+               if (inFunction) {
+                   functionBodyBuilder.append("    aload " + v + "\n");
+                   functionBodyBuilder.append("    dup\n");
+                   functionBodyBuilder.append("    invokevirtual java/util/ArrayList/size()I\n");
+                   functionBodyBuilder.append("    iconst_1\n");
+                   functionBodyBuilder.append("    isub\n");
+                   functionBodyBuilder.append("    invokevirtual java/util/ArrayList/remove(I)Ljava/lang/Object;\n");
+                   functionBodyBuilder.append("    pop\n"); // remove o objeto retornado
+               } else {
+                   System.out.println("    aload " + v);
+                   System.out.println("    dup");
+                   System.out.println("    invokevirtual java/util/ArrayList/size()I");
+                   System.out.println("    iconst_1");
+                   System.out.println("    isub");
+                   System.out.println("    invokevirtual java/util/ArrayList/remove(I)Ljava/lang/Object;");
+                   System.out.println("    pop"); // remove o objeto retornado
+               }
+           } else {
+               System.err.println("Variable " + $VAR.text + " is not an array or undefined");
            }
        }
    ;
