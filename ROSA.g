@@ -8,6 +8,7 @@
 {
    import java.util.Map;
    import java.util.LinkedHashMap;
+   import java.util.ArrayList;
 }
 
 
@@ -60,6 +61,11 @@ COMMA     : ',' ;
 INT_TYPE    : 'int' ;
 DOUBLE_TYPE : 'double' ;
 STRING_TYPE : 'string'  ;
+ARRAY_TYPE  : 'array' ;
+
+// Tokens para operações de arrays
+PUSH        : 'push' ;
+LENGTH      : 'length' ;
 
 
 VAR     : 'a'..'z'+ ;
@@ -176,7 +182,8 @@ statement
      statement_textcolor  |
      statement_if         |
      statement_while      |
-     function_call
+     function_call        |
+     array_push
    ;
 
 assignment
@@ -232,6 +239,25 @@ typed_assignment
                System.out.println("    astore " + memory.get($VAR.text));
            }
        }
+   | ARRAY_TYPE VAR
+       {
+           if (!memory.containsKey($VAR.text)) {
+               memory.put($VAR.text, counter++);
+               variableTypes.put($VAR.text, "array");
+           }
+           // Criar novo ArrayList
+           if (inFunction) {
+               functionBodyBuilder.append("    new java/util/ArrayList\n");
+               functionBodyBuilder.append("    dup\n");
+               functionBodyBuilder.append("    invokespecial java/util/ArrayList/<init>()V\n");
+               functionBodyBuilder.append("    astore " + memory.get($VAR.text) + "\n");
+           } else {
+               System.out.println("    new java/util/ArrayList");
+               System.out.println("    dup");
+               System.out.println("    invokespecial java/util/ArrayList/<init>()V");
+               System.out.println("    astore " + memory.get($VAR.text));
+           }
+       }
    ;
 
 value returns [String valueType, String text]
@@ -239,6 +265,18 @@ value returns [String valueType, String text]
    | NUM    { $valueType = "INT";    $text = $NUM.text; }
    | DOUBLE { $valueType = "DOUBLE"; $text = $DOUBLE.text; }
    | function_call { $valueType = $function_call.valueType; $text = $function_call.text; }
+   | LENGTH OPEN_P VAR CLOSE_P
+       {
+           Integer v = memory.get($VAR.text);
+           if (v != null && variableTypes.get($VAR.text).equals("array")) {
+               $valueType = "ARRAY_LENGTH";
+               $text = $VAR.text;
+           } else {
+               System.err.println("Variable " + $VAR.text + " is not an array or undefined");
+               $valueType = "UNDEF";
+               $text = $VAR.text;
+           }
+       }
    | VAR    {
                 Integer v = memory.get($VAR.text);
                 if (v != null) {
@@ -377,6 +415,16 @@ statement_print
             } else if ($value.valueType.equals("FUNCTION_CALL")) {
                 // A função já foi chamada e o resultado está na pilha
                 System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
+            } else if ($value.valueType.equals("ARRAY_LENGTH")) {
+                // Gerar instruções para array.size()
+                Integer v = memory.get($value.text);
+                if (v != null) {
+                    System.out.println("    aload " + v);
+                    System.out.println("    invokevirtual java/util/ArrayList/size()I");
+                    System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
+                } else {
+                    System.err.println("undefined variable " + $value.text);
+                }
             }
         }
    ;
@@ -497,4 +545,34 @@ factor
             }
    |   function_call
    |   OPEN_P expression CLOSE_P
+   ;
+
+array_push
+   : PUSH OPEN_P VAR COMMA
+       {
+           // Carrega o array primeiro
+           Integer v = memory.get($VAR.text);
+           if (v != null && variableTypes.get($VAR.text).equals("array")) {
+               if (inFunction) {
+                   functionBodyBuilder.append("    aload " + v + "\n");
+               } else {
+                   System.out.println("    aload " + v);
+               }
+           } else {
+               System.err.println("Variable " + $VAR.text + " is not an array or undefined");
+           }
+       }
+       expression CLOSE_P
+       {
+           // Agora temos [array, value] na pilha - executar o add
+           if (inFunction) {
+               functionBodyBuilder.append("    invokestatic java/lang/Integer/valueOf(I)Ljava/lang/Integer;\n");
+               functionBodyBuilder.append("    invokevirtual java/util/ArrayList/add(Ljava/lang/Object;)Z\n");
+               functionBodyBuilder.append("    pop\n"); // remove o boolean retornado
+           } else {
+               System.out.println("    invokestatic java/lang/Integer/valueOf(I)Ljava/lang/Integer;");
+               System.out.println("    invokevirtual java/util/ArrayList/add(Ljava/lang/Object;)Z");
+               System.out.println("    pop"); // remove o boolean retornado
+           }
+       }
    ;
