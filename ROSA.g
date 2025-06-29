@@ -349,8 +349,6 @@ value returns [String valueType, String text]
    | read_int { $valueType = $read_int.valueType; $text = $read_int.text; }
    | read_double { $valueType = $read_double.valueType; $text = $read_double.text; }
    | read_string { $valueType = $read_string.valueType; $text = $read_string.text; }
-   | array_get { $valueType = $array_get.valueType; $text = $array_get.text; }
-   | array_length { $valueType = $array_length.valueType; $text = $array_length.text; }
    ;
 
 statement_if
