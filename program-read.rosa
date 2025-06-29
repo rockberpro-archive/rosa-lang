@@ -1,0 +1,15 @@
+main() {
+    print("Digite seu nome: ")
+    x = read_string()
+    print("Digite sua altura:")
+    y = read_double()
+    print("Digite sua idade: ")
+    z = read_int()
+
+    print("Seu nome e: ")
+    print(x)
+    print("Sua altura e:")
+    print(y)
+    print("Sua idade e: ")
+    print(z)
+}
