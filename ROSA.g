@@ -9,6 +9,7 @@
    import java.util.Map;
    import java.util.LinkedHashMap;
    import java.util.ArrayList;
+   import java.util.Scanner;
 }
 
 
@@ -22,6 +23,7 @@
    Integer functionCounter = 1;
    boolean inFunction = false;
    StringBuilder functionBodyBuilder = new StringBuilder();
+   static Scanner scanner = new Scanner(System.in); // Scanner global para leitura
 
    public static void main(String[] args) throws Exception
    {
@@ -69,6 +71,11 @@ ARRAY_POP    : 'array_pop' ;
 ARRAY_LENGTH : 'array_length' ;
 ARRAY_GET    : 'array_get' ;
 ARRAY_SET    : 'array_set' ;
+
+// Tokens para operações de leitura
+READ_INT    : 'read_int' ;
+READ_STRING : 'read_string' ;
+READ_DOUBLE : 'read_double' ;
 
 
 VAR     : 'a'..'z'+ ;
@@ -162,9 +169,20 @@ main
                System.out.println(".source ROSATest.j");
                System.out.println(".class  public ROSATest");
                System.out.println(".super  java/lang/Object\n");
+               System.out.println(".field public static scanner Ljava/util/Scanner;\n");
                System.out.println(".method public <init>()V");
                System.out.println("    aload_0");
                System.out.println("    invokenonvirtual java/lang/Object/<init>()V");
+               System.out.println("    return");
+               System.out.println(".end method\n");
+               System.out.println(".method static <clinit>()V");
+               System.out.println(".limit stack 3");
+               System.out.println(".limit locals 0");
+               System.out.println("    new java/util/Scanner");
+               System.out.println("    dup");
+               System.out.println("    getstatic java/lang/System/in Ljava/io/InputStream;");
+               System.out.println("    invokespecial java/util/Scanner/<init>(Ljava/io/InputStream;)V");
+               System.out.println("    putstatic ROSATest/scanner Ljava/util/Scanner;");
                System.out.println("    return");
                System.out.println(".end method\n");
                System.out.println(".method public static main([Ljava/lang/String;)V");
@@ -188,12 +206,48 @@ statement
      function_call        |
      array_push           |
      array_pop            |
-     array_set
+     array_set            |
+     read_statement
    ;
 
 assignment
    :
-       VAR ATTRIB ( expression )
+       VAR ATTRIB ( value )
+       {
+           if (!memory.containsKey($VAR.text)) {
+               memory.put($VAR.text, counter++);
+               // Detectar tipo baseado no value
+               if ($value.valueType.equals("READ_DOUBLE") || $value.valueType.equals("DOUBLE") || $value.valueType.equals("DOUBLE_VAR")) {
+                   variableTypes.put($VAR.text, "double");
+                   memory.put($VAR.text, counter - 1);
+                   counter++; // Double ocupa 2 slots
+               } else if ($value.valueType.equals("READ_STRING") || $value.valueType.equals("STRING") || $value.valueType.equals("STRING_VAR")) {
+                   variableTypes.put($VAR.text, "string");
+               } else {
+                   variableTypes.put($VAR.text, "int");
+               }
+           }
+           
+           String varType = variableTypes.get($VAR.text);
+           if (inFunction) {
+               if (varType.equals("double")) {
+                   functionBodyBuilder.append("    dstore " + memory.get($VAR.text) + "\n");
+               } else if (varType.equals("string")) {
+                   functionBodyBuilder.append("    astore " + memory.get($VAR.text) + "\n");
+               } else {
+                   functionBodyBuilder.append("    istore " + memory.get($VAR.text) + "\n");
+               }
+           } else {
+               if (varType.equals("double")) {
+                   System.out.println("    dstore " + memory.get($VAR.text));
+               } else if (varType.equals("string")) {
+                   System.out.println("    astore " + memory.get($VAR.text));
+               } else {
+                   System.out.println("    istore " + memory.get($VAR.text));
+               }
+           }
+       }
+   | VAR ATTRIB ( expression )
        {
            if (!memory.containsKey($VAR.text)) memory.put($VAR.text, counter++);
            if (inFunction) {
@@ -270,6 +324,42 @@ value returns [String valueType, String text]
    | NUM    { $valueType = "INT";    $text = $NUM.text; }
    | DOUBLE { $valueType = "DOUBLE"; $text = $DOUBLE.text; }
    | function_call { $valueType = $function_call.valueType; $text = $function_call.text; }
+   | READ_INT OPEN_P CLOSE_P
+       {
+           if (inFunction) {
+               functionBodyBuilder.append("    getstatic ROSATest/scanner Ljava/util/Scanner;\n");
+               functionBodyBuilder.append("    invokevirtual java/util/Scanner/nextInt()I\n");
+           } else {
+               System.out.println("    getstatic ROSATest/scanner Ljava/util/Scanner;");
+               System.out.println("    invokevirtual java/util/Scanner/nextInt()I");
+           }
+           $valueType = "READ_INT";
+           $text = "read_int()";
+       }
+   | READ_DOUBLE OPEN_P CLOSE_P
+       {
+           if (inFunction) {
+               functionBodyBuilder.append("    getstatic ROSATest/scanner Ljava/util/Scanner;\n");
+               functionBodyBuilder.append("    invokevirtual java/util/Scanner/nextDouble()D\n");
+           } else {
+               System.out.println("    getstatic ROSATest/scanner Ljava/util/Scanner;");
+               System.out.println("    invokevirtual java/util/Scanner/nextDouble()D");
+           }
+           $valueType = "READ_DOUBLE";
+           $text = "read_double()";
+       }
+   | READ_STRING OPEN_P CLOSE_P
+       {
+           if (inFunction) {
+               functionBodyBuilder.append("    getstatic ROSATest/scanner Ljava/util/Scanner;\n");
+               functionBodyBuilder.append("    invokevirtual java/util/Scanner/next()Ljava/lang/String;\n");
+           } else {
+               System.out.println("    getstatic ROSATest/scanner Ljava/util/Scanner;");
+               System.out.println("    invokevirtual java/util/Scanner/next()Ljava/lang/String;");
+           }
+           $valueType = "READ_STRING";
+           $text = "read_string()";
+       }
    | ARRAY_LENGTH OPEN_P VAR CLOSE_P
        {
            Integer v = memory.get($VAR.text);
@@ -384,12 +474,6 @@ statement_print
             System.out.println("    ldc2_w " + $DOUBLE.text);
             System.out.println("    invokevirtual java/io/PrintStream/println(D)V");
         }
-   | PRINT OPEN_P expression CLOSE_P
-        {
-            System.out.println("    getstatic java/lang/System/out Ljava/io/PrintStream;");
-            System.out.println("    swap");
-            System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
-        }
    | PRINT OPEN_P value CLOSE_P
         {
             System.out.println("    getstatic java/lang/System/out Ljava/io/PrintStream;");
@@ -435,6 +519,15 @@ statement_print
             } else if ($value.valueType.equals("FUNCTION_CALL")) {
                 // A função já foi chamada e o resultado está na pilha
                 System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
+            } else if ($value.valueType.equals("READ_INT")) {
+                // A leitura já foi feita e o resultado está na pilha
+                System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
+            } else if ($value.valueType.equals("READ_DOUBLE")) {
+                // A leitura já foi feita e o resultado está na pilha
+                System.out.println("    invokevirtual java/io/PrintStream/println(D)V");
+            } else if ($value.valueType.equals("READ_STRING")) {
+                // A leitura já foi feita e o resultado está na pilha
+                System.out.println("    invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V");
             } else if ($value.valueType.equals("ARRAY_LENGTH")) {
                 // Gerar instruções para array.size()
                 Integer v = memory.get($value.text);
@@ -446,6 +539,14 @@ statement_print
                     System.err.println("undefined variable " + $value.text);
                 }
             }
+        }
+   | PRINT OPEN_P
+        {
+            System.out.println("    getstatic java/lang/System/out Ljava/io/PrintStream;");
+        }
+        expression CLOSE_P
+        {
+            System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
         }
    ;
 
@@ -508,6 +609,26 @@ factor
                     functionBodyBuilder.append("    ldc " + $NUM.text + "\n");
                 } else {
                     System.out.println("    ldc " + $NUM.text); 
+                }
+            }
+   |   READ_INT OPEN_P CLOSE_P
+            {
+                if (inFunction) {
+                    functionBodyBuilder.append("    getstatic ROSATest/scanner Ljava/util/Scanner;\n");
+                    functionBodyBuilder.append("    invokevirtual java/util/Scanner/nextInt()I\n");
+                } else {
+                    System.out.println("    getstatic ROSATest/scanner Ljava/util/Scanner;");
+                    System.out.println("    invokevirtual java/util/Scanner/nextInt()I");
+                }
+            }
+   |   READ_DOUBLE OPEN_P CLOSE_P
+            {
+                if (inFunction) {
+                    functionBodyBuilder.append("    getstatic ROSATest/scanner Ljava/util/Scanner;\n");
+                    functionBodyBuilder.append("    invokevirtual java/util/Scanner/nextDouble()D\n");
+                } else {
+                    System.out.println("    getstatic ROSATest/scanner Ljava/util/Scanner;");
+                    System.out.println("    invokevirtual java/util/Scanner/nextDouble()D");
                 }
             }
    |   VAR
@@ -685,6 +806,58 @@ array_set
                System.out.println("    invokestatic java/lang/Integer/valueOf(I)Ljava/lang/Integer;");
                System.out.println("    invokevirtual java/util/ArrayList/set(ILjava/lang/Object;)Ljava/lang/Object;");
                System.out.println("    pop"); // remove o objeto anterior retornado
+           }
+       }
+   ;
+
+read_statement
+   : VAR ATTRIB READ_INT OPEN_P CLOSE_P
+       {
+           if (!memory.containsKey($VAR.text)) {
+               memory.put($VAR.text, counter++);
+               variableTypes.put($VAR.text, "int");
+           }
+           if (inFunction) {
+               functionBodyBuilder.append("    getstatic ROSATest/scanner Ljava/util/Scanner;\n");
+               functionBodyBuilder.append("    invokevirtual java/util/Scanner/nextInt()I\n");
+               functionBodyBuilder.append("    istore " + memory.get($VAR.text) + "\n");
+           } else {
+               System.out.println("    getstatic ROSATest/scanner Ljava/util/Scanner;");
+               System.out.println("    invokevirtual java/util/Scanner/nextInt()I");
+               System.out.println("    istore " + memory.get($VAR.text));
+           }
+       }
+   | VAR ATTRIB READ_DOUBLE OPEN_P CLOSE_P
+       {
+           if (!memory.containsKey($VAR.text)) {
+               memory.put($VAR.text, counter);
+               counter += 2; // Double ocupa 2 slots
+               variableTypes.put($VAR.text, "double");
+           }
+           if (inFunction) {
+               functionBodyBuilder.append("    getstatic ROSATest/scanner Ljava/util/Scanner;\n");
+               functionBodyBuilder.append("    invokevirtual java/util/Scanner/nextDouble()D\n");
+               functionBodyBuilder.append("    dstore " + memory.get($VAR.text) + "\n");
+           } else {
+               System.out.println("    getstatic ROSATest/scanner Ljava/util/Scanner;");
+               System.out.println("    invokevirtual java/util/Scanner/nextDouble()D");
+               System.out.println("    dstore " + memory.get($VAR.text));
+           }
+       }
+   | VAR ATTRIB READ_STRING OPEN_P CLOSE_P
+       {
+           if (!memory.containsKey($VAR.text)) {
+               memory.put($VAR.text, counter++);
+               variableTypes.put($VAR.text, "string");
+           }
+           if (inFunction) {
+               functionBodyBuilder.append("    getstatic ROSATest/scanner Ljava/util/Scanner;\n");
+               functionBodyBuilder.append("    invokevirtual java/util/Scanner/next()Ljava/lang/String;\n");
+               functionBodyBuilder.append("    astore " + memory.get($VAR.text) + "\n");
+           } else {
+               System.out.println("    getstatic ROSATest/scanner Ljava/util/Scanner;");
+               System.out.println("    invokevirtual java/util/Scanner/next()Ljava/lang/String;");
+               System.out.println("    astore " + memory.get($VAR.text));
            }
        }
    ;
