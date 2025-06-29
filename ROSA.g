@@ -396,36 +396,7 @@ value returns [String valueType, String text]
                     $text = $VAR.text;
                 }
             }
-   | ARRAY_GET OPEN_P VAR COMMA
-       {
-           // Primeiro carregamos o array
-           Integer v = memory.get($VAR.text);
-           if (v != null && variableTypes.get($VAR.text).equals("array")) {
-               if (inFunction) {
-                   functionBodyBuilder.append("    aload " + v + "\n");
-               } else {
-                   System.out.println("    aload " + v);
-               }
-           } else {
-               System.err.println("Variable " + $VAR.text + " is not an array or undefined");
-           }
-       }
-       expression CLOSE_P
-       {
-           // Agora temos array na posição 0 da pilha e index na posição 1
-           // ArrayList.get(int) espera [array, index] na pilha
-           if (inFunction) {
-               functionBodyBuilder.append("    invokevirtual java/util/ArrayList/get(I)Ljava/lang/Object;\n");
-               functionBodyBuilder.append("    checkcast java/lang/Integer\n");
-               functionBodyBuilder.append("    invokevirtual java/lang/Integer/intValue()I\n");
-           } else {
-               System.out.println("    invokevirtual java/util/ArrayList/get(I)Ljava/lang/Object;");
-               System.out.println("    checkcast java/lang/Integer");
-               System.out.println("    invokevirtual java/lang/Integer/intValue()I");
-           }
-           $valueType = "ARRAY_GET";
-           $text = $VAR.text;
-       }
+   | array_get
    ;
 
 statement_if
