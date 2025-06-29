@@ -218,6 +218,8 @@ return_statement
        {
            if (inFunction) {
                functionBodyBuilder.append("    ireturn\n");
+           } else {
+               System.out.println("    ireturn");
            }
        }
    ;
@@ -427,18 +429,54 @@ typed_assignment
    ;
 
 value returns [String valueType, String text]
-   : STRING { $valueType = "STRING"; $text = $STRING.text; }
-   | NUM    { $valueType = "INT";    $text = $NUM.text; }
-   | DOUBLE { $valueType = "DOUBLE"; $text = $DOUBLE.text; }
+   : STRING { 
+                if (inFunction) {
+                    functionBodyBuilder.append("    ldc " + $STRING.text + "\n");
+                } else {
+                    System.out.println("    ldc " + $STRING.text);
+                }
+                $valueType = "STRING"; $text = $STRING.text; 
+            }
+   | NUM    { 
+                if (inFunction) {
+                    functionBodyBuilder.append("    ldc " + $NUM.text + "\n");
+                } else {
+                    System.out.println("    ldc " + $NUM.text);
+                }
+                $valueType = "INT";    $text = $NUM.text; 
+            }
+   | DOUBLE { 
+                if (inFunction) {
+                    functionBodyBuilder.append("    ldc2_w " + $DOUBLE.text + "\n");
+                } else {
+                    System.out.println("    ldc2_w " + $DOUBLE.text);
+                }
+                $valueType = "DOUBLE"; $text = $DOUBLE.text; 
+            }
    | VAR    {
                 Integer v = memory.get($VAR.text);
                 if (v != null) {
                     String varType = variableTypes.get($VAR.text);
                     if (varType != null && varType.equals("double")) {
+                        if (inFunction) {
+                            functionBodyBuilder.append("    dload " + v + "\n");
+                        } else {
+                            System.out.println("    dload " + v);
+                        }
                         $valueType = "DOUBLE_VAR";
                     } else if (varType != null && varType.equals("string")) {
+                        if (inFunction) {
+                            functionBodyBuilder.append("    aload " + v + "\n");
+                        } else {
+                            System.out.println("    aload " + v);
+                        }
                         $valueType = "STRING_VAR";
                     } else {
+                        if (inFunction) {
+                            functionBodyBuilder.append("    iload " + v + "\n");
+                        } else {
+                            System.out.println("    iload " + v);
+                        }
                         $valueType = "VAR";
                     }
                     $text = $VAR.text;
@@ -452,6 +490,8 @@ value returns [String valueType, String text]
    | read_int { $valueType = $read_int.valueType; $text = $read_int.text; }
    | read_double { $valueType = $read_double.valueType; $text = $read_double.text; }
    | read_string { $valueType = $read_string.valueType; $text = $read_string.text; }
+   | array_get { $valueType = $array_get.valueType; $text = $array_get.text; }
+   | array_length { $valueType = $array_length.valueType; $text = $array_length.text; }
    ;
 
 statement_if
@@ -461,15 +501,31 @@ statement_if
             int label_false = counter++;
             int label_end = counter++;
 
+            // Gera a instrução de comparação baseada no operador
+            String operator = $condition.operator;
+            String jumpInstr = "";
+            
+            if (operator.equals("==")) {
+                jumpInstr = "if_icmpne";
+            } else if (operator.equals("!=")) {
+                jumpInstr = "if_icmpeq";
+            } else if (operator.equals("<")) {
+                jumpInstr = "if_icmpge";
+            } else if (operator.equals("<=")) {
+                jumpInstr = "if_icmpgt";
+            } else if (operator.equals(">")) {
+                jumpInstr = "if_icmple";
+            } else if (operator.equals(">=")) {
+                jumpInstr = "if_icmplt";
+            }
+
             if (inFunction) {
                 functionBodyBuilder.append("    ; if condition\n");
-                functionBodyBuilder.append("    if_icmpeq label_" + label_true + "\n");
-                functionBodyBuilder.append("    goto label_" + label_false + "\n");
+                functionBodyBuilder.append("    " + jumpInstr + " label_" + label_false + "\n");
                 functionBodyBuilder.append("label_" + label_true + ":\n");
             } else {
                 System.out.println("    ; if condition");
-                System.out.println("    if_icmpeq label_" + label_true);
-                System.out.println("    goto label_" + label_false);
+                System.out.println("    " + jumpInstr + " label_" + label_false);
                 System.out.println("label_" + label_true + ":");
             }
         }
@@ -489,15 +545,31 @@ statement_if
             int label_true_else_if = counter++;
             int label_false_else_if = counter++;
 
+            // Gera a instrução de comparação baseada no operador para else if
+            String elseIfOperator = $condition.operator;
+            String elseIfJumpInstr = "";
+            
+            if (elseIfOperator.equals("==")) {
+                elseIfJumpInstr = "if_icmpne";
+            } else if (elseIfOperator.equals("!=")) {
+                elseIfJumpInstr = "if_icmpeq";
+            } else if (elseIfOperator.equals("<")) {
+                elseIfJumpInstr = "if_icmpge";
+            } else if (elseIfOperator.equals("<=")) {
+                elseIfJumpInstr = "if_icmpgt";
+            } else if (elseIfOperator.equals(">")) {
+                elseIfJumpInstr = "if_icmple";
+            } else if (elseIfOperator.equals(">=")) {
+                elseIfJumpInstr = "if_icmplt";
+            }
+
             if (inFunction) {
                 functionBodyBuilder.append("    ; else if condition\n");
-                functionBodyBuilder.append("    if_icmpeq label_" + label_true_else_if + "\n");
-                functionBodyBuilder.append("    goto label_" + label_false_else_if + "\n");
+                functionBodyBuilder.append("    " + elseIfJumpInstr + " label_" + label_false_else_if + "\n");
                 functionBodyBuilder.append("label_" + label_true_else_if + ":\n");
             } else {
                 System.out.println("    ; else if condition");
-                System.out.println("    if_icmpeq label_" + label_true_else_if);
-                System.out.println("    goto label_" + label_false_else_if);
+                System.out.println("    " + elseIfJumpInstr + " label_" + label_false_else_if);
                 System.out.println("label_" + label_true_else_if + ":");
             }
         }
@@ -551,41 +623,41 @@ statement_while
                 System.out.println("label_" + label_start + ":");
             }
         }
-        expression ( '==' | '!=' | '<' | '<=' | '>' | '>=' ) expression CLOSE_P OPEN_C
+        expression op = ( '==' | '!=' | '<' | '<=' | '>' | '>=' ) expression CLOSE_P OPEN_C
         {
             // Gera a instrução de comparação baseada no operador
-            String operator = $text;
-            if (operator.contains("<=")) {
+            String operator = $op.text;
+            if (operator.equals("<=")) {
                 if (inFunction) {
                     functionBodyBuilder.append("    if_icmpgt label_" + label_end + "\n");
                 } else {
                     System.out.println("    if_icmpgt label_" + label_end);
                 }
-            } else if (operator.contains(">=")) {
+            } else if (operator.equals(">=")) {
                 if (inFunction) {
                     functionBodyBuilder.append("    if_icmplt label_" + label_end + "\n");
                 } else {
                     System.out.println("    if_icmplt label_" + label_end);
                 }
-            } else if (operator.contains("<")) {
+            } else if (operator.equals("<")) {
                 if (inFunction) {
                     functionBodyBuilder.append("    if_icmpge label_" + label_end + "\n");
                 } else {
                     System.out.println("    if_icmpge label_" + label_end);
                 }
-            } else if (operator.contains(">")) {
+            } else if (operator.equals(">")) {
                 if (inFunction) {
                     functionBodyBuilder.append("    if_icmple label_" + label_end + "\n");
                 } else {
                     System.out.println("    if_icmple label_" + label_end);
                 }
-            } else if (operator.contains("==")) {
+            } else if (operator.equals("==")) {
                 if (inFunction) {
                     functionBodyBuilder.append("    if_icmpne label_" + label_end + "\n");
                 } else {
                     System.out.println("    if_icmpne label_" + label_end);
                 }
-            } else if (operator.contains("!=")) {
+            } else if (operator.equals("!=")) {
                 if (inFunction) {
                     functionBodyBuilder.append("    if_icmpeq label_" + label_end + "\n");
                 } else {
@@ -628,68 +700,58 @@ statement_print
    | PRINT OPEN_P value CLOSE_P
         {
             if (inFunction) {
-                functionBodyBuilder.append("    getstatic java/lang/System/out Ljava/io/PrintStream;\n");
-                if ($value.valueType.equals("INT")) {
-                    functionBodyBuilder.append("    ldc " + $value.text + "\n");
-                    functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(I)V\n");
-                } else if ($value.valueType.equals("VAR")) {
-                    Integer v = memory.get($value.text);
-                    if (v != null) {
-                        functionBodyBuilder.append("    iload " + v + "\n");
+                if ($value.valueType.equals("DOUBLE_VAR") || $value.valueType.equals("DOUBLE")) {
+                    // Para doubles, não usar getstatic antes, fazer depois
+                    functionBodyBuilder.append("    getstatic java/lang/System/out Ljava/io/PrintStream;\n");
+                    functionBodyBuilder.append("    dup_x2\n");  // duplica PrintStream abaixo do double
+                    functionBodyBuilder.append("    pop\n");    // remove PrintStream do topo
+                    functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(D)V\n");
+                } else {
+                    functionBodyBuilder.append("    getstatic java/lang/System/out Ljava/io/PrintStream;\n");
+                    functionBodyBuilder.append("    swap\n"); // value já está na pilha, então swap para colocar PrintStream por baixo
+                    if ($value.valueType.equals("VAR") || $value.valueType.equals("INT")) {
                         functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(I)V\n");
-                    }
-                } else if ($value.valueType.equals("DOUBLE_VAR")) {
-                    Integer v = memory.get($value.text);
-                    if (v != null) {
-                        functionBodyBuilder.append("    dload " + v + "\n");
-                        functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(D)V\n");
-                    }
-                } else if ($value.valueType.equals("STRING_VAR")) {
-                    Integer v = memory.get($value.text);
-                    if (v != null) {
-                        functionBodyBuilder.append("    aload " + v + "\n");
+                    } else if ($value.valueType.equals("STRING_VAR") || $value.valueType.equals("STRING")) {
                         functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V\n");
+                    } else if ($value.valueType.equals("ARRAY_LENGTH") || $value.valueType.equals("ARRAY_GET")) {
+                        functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(I)V\n");
                     }
                 }
             } else {
-                System.out.println("    getstatic java/lang/System/out Ljava/io/PrintStream;");
-                if ($value.valueType.equals("INT")) {
-                    System.out.println("    ldc " + $value.text);
-                    System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
-                } else if ($value.valueType.equals("VAR")) {
-                    Integer v = memory.get($value.text);
-                    if (v != null) {
-                        System.out.println("    iload " + v);
+                if ($value.valueType.equals("DOUBLE_VAR") || $value.valueType.equals("DOUBLE")) {
+                    // Para doubles, não usar getstatic antes, fazer depois
+                    System.out.println("    getstatic java/lang/System/out Ljava/io/PrintStream;");
+                    System.out.println("    dup_x2");  // duplica PrintStream abaixo do double
+                    System.out.println("    pop");     // remove PrintStream do topo
+                    System.out.println("    invokevirtual java/io/PrintStream/println(D)V");
+                } else {
+                    System.out.println("    getstatic java/lang/System/out Ljava/io/PrintStream;");
+                    System.out.println("    swap"); // value já está na pilha, então swap para colocar PrintStream por baixo
+                    if ($value.valueType.equals("VAR") || $value.valueType.equals("INT")) {
                         System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
-                    } else {
-                        System.err.println("undefined variable " + $value.text);
-                    }
-                } else if ($value.valueType.equals("DOUBLE_VAR")) {
-                    Integer v = memory.get($value.text);
-                    if (v != null) {
-                        System.out.println("    dload " + v);
-                        System.out.println("    invokevirtual java/io/PrintStream/println(D)V");
-                    } else {
-                        System.err.println("undefined variable " + $value.text);
-                    }
-                } else if ($value.valueType.equals("STRING_VAR")) {
-                    Integer v = memory.get($value.text);
-                    if (v != null) {
-                        System.out.println("    aload " + v);
+                    } else if ($value.valueType.equals("STRING_VAR") || $value.valueType.equals("STRING")) {
                         System.out.println("    invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V");
-                    } else {
-                        System.err.println("undefined variable " + $value.text);
+                    } else if ($value.valueType.equals("ARRAY_LENGTH") || $value.valueType.equals("ARRAY_GET")) {
+                        System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
                     }
                 }
             }
         }
    | PRINT OPEN_P
         {
-            System.out.println("    getstatic java/lang/System/out Ljava/io/PrintStream;");
+            if (inFunction) {
+                functionBodyBuilder.append("    getstatic java/lang/System/out Ljava/io/PrintStream;\n");
+            } else {
+                System.out.println("    getstatic java/lang/System/out Ljava/io/PrintStream;");
+            }
         }
         expression CLOSE_P
         {
-            System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
+            if (inFunction) {
+                functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(I)V\n");
+            } else {
+                System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
+            }
         }
    ;
 
@@ -707,11 +769,10 @@ statement_textcolor
             }
    ;
 
-condition
-   : expression ( '==' | '!=' | '<' | '<=' | '>' | '>=' ) expression
+condition returns [String operator]
+   : expression op = ( '==' | '!=' | '<' | '<=' | '>' | '>=' ) expression
         {
-            // Nota: As instruções de comparação são geradas pelo contexto que chama condition
-            // não aqui diretamente
+            $operator = $op.text;
         }
    ;
 
@@ -945,27 +1006,23 @@ array_get returns [String valueType, String text]
 array_length returns [String valueType, String text]
     : ARRAY_LENGTH OPEN_P VAR CLOSE_P
        {
-           // Carrega o array primeiro
            Integer v = memory.get($VAR.text);
            if (v != null && variableTypes.get($VAR.text).equals("array")) {
+               // Sempre gera o código - será coordenado pela regra de print quando necessário
                if (inFunction) {
                    functionBodyBuilder.append("    aload " + v + "\n");
+                   functionBodyBuilder.append("    invokevirtual java/util/ArrayList/size()I\n");
                } else {
                    System.out.println("    aload " + v);
+                   System.out.println("    invokevirtual java/util/ArrayList/size()I");
                }
+               $valueType = "ARRAY_LENGTH";
+               $text = $VAR.text;
            } else {
                System.err.println("Variable " + $VAR.text + " is not an array or undefined");
+               $valueType = "UNDEF";
+               $text = $VAR.text;
            }
-       }
-       {
-           // Agora temos o array na pilha, vamos obter o tamanho
-           if (inFunction) {
-               functionBodyBuilder.append("    invokevirtual java/util/ArrayList/size()I\n");
-           } else {
-               System.out.println("    invokevirtual java/util/ArrayList/size()I");
-           }
-           $valueType = "ARRAY_LENGTH";
-           $text = $VAR.text;
        }
     ;
 
