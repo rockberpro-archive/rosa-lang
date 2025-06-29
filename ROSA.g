@@ -366,18 +366,6 @@ value returns [String valueType, String text]
            $valueType = "READ_STRING";
            $text = "read_string()";
        }
-   | ARRAY_LENGTH OPEN_P VAR CLOSE_P
-       {
-           Integer v = memory.get($VAR.text);
-           if (v != null && variableTypes.get($VAR.text).equals("array")) {
-               $valueType = "ARRAY_LENGTH";
-               $text = $VAR.text;
-           } else {
-               System.err.println("Variable " + $VAR.text + " is not an array or undefined");
-               $valueType = "UNDEF";
-               $text = $VAR.text;
-           }
-       }
    | VAR    {
                 Integer v = memory.get($VAR.text);
                 if (v != null) {
@@ -397,6 +385,7 @@ value returns [String valueType, String text]
                 }
             }
    | array_get
+   | array_length
    ;
 
 statement_if
@@ -693,6 +682,7 @@ factor
             }
    |   function_call
    |   array_get
+   |   array_length
    ;
 
 array_push
@@ -819,6 +809,31 @@ array_get
            }
        }
    ;
+
+array_length
+    : ARRAY_LENGTH OPEN_P VAR CLOSE_P
+       {
+           // Carrega o array primeiro
+           Integer v = memory.get($VAR.text);
+           if (v != null && variableTypes.get($VAR.text).equals("array")) {
+               if (inFunction) {
+                   functionBodyBuilder.append("    aload " + v + "\n");
+               } else {
+                   System.out.println("    aload " + v);
+               }
+           } else {
+               System.err.println("Variable " + $VAR.text + " is not an array or undefined");
+           }
+       }
+       {
+           // Agora temos o array na pilha, vamos obter o tamanho
+           if (inFunction) {
+               functionBodyBuilder.append("    invokevirtual java/util/ArrayList/size()I\n");
+           } else {
+               System.out.println("    invokevirtual java/util/ArrayList/size()I");
+           }
+       }
+    ;
 
 read_statement
    : VAR ATTRIB READ_INT OPEN_P CLOSE_P
