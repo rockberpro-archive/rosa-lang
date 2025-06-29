@@ -290,17 +290,15 @@ typed_assignment
                System.out.println("    dstore " + memory.get($VAR.text));
            }
        }
-   | STRING_TYPE VAR ATTRIB STRING
+   | STRING_TYPE VAR ATTRIB value
        {
            if (!memory.containsKey($VAR.text)) {
                memory.put($VAR.text, counter++);
                variableTypes.put($VAR.text, "string");
            }
            if (inFunction) {
-               functionBodyBuilder.append("    ldc " + $STRING.text + "\n");
                functionBodyBuilder.append("    astore " + memory.get($VAR.text) + "\n");
            } else {
-               System.out.println("    ldc " + $STRING.text);
                System.out.println("    astore " + memory.get($VAR.text));
            }
        }
@@ -330,42 +328,9 @@ value returns [String valueType, String text]
    | NUM    { $valueType = "INT";    $text = $NUM.text; }
    | DOUBLE { $valueType = "DOUBLE"; $text = $DOUBLE.text; }
    | function_call { $valueType = $function_call.valueType; $text = $function_call.text; }
-   | READ_INT OPEN_P CLOSE_P
-       {
-           if (inFunction) {
-               functionBodyBuilder.append("    getstatic ROSATest/scanner Ljava/util/Scanner;\n");
-               functionBodyBuilder.append("    invokevirtual java/util/Scanner/nextInt()I\n");
-           } else {
-               System.out.println("    getstatic ROSATest/scanner Ljava/util/Scanner;");
-               System.out.println("    invokevirtual java/util/Scanner/nextInt()I");
-           }
-           $valueType = "READ_INT";
-           $text = "read_int()";
-       }
-   | READ_DOUBLE OPEN_P CLOSE_P
-       {
-           if (inFunction) {
-               functionBodyBuilder.append("    getstatic ROSATest/scanner Ljava/util/Scanner;\n");
-               functionBodyBuilder.append("    invokevirtual java/util/Scanner/nextDouble()D\n");
-           } else {
-               System.out.println("    getstatic ROSATest/scanner Ljava/util/Scanner;");
-               System.out.println("    invokevirtual java/util/Scanner/nextDouble()D");
-           }
-           $valueType = "READ_DOUBLE";
-           $text = "read_double()";
-       }
-   | READ_STRING OPEN_P CLOSE_P
-       {
-           if (inFunction) {
-               functionBodyBuilder.append("    getstatic ROSATest/scanner Ljava/util/Scanner;\n");
-               functionBodyBuilder.append("    invokevirtual java/util/Scanner/next()Ljava/lang/String;\n");
-           } else {
-               System.out.println("    getstatic ROSATest/scanner Ljava/util/Scanner;");
-               System.out.println("    invokevirtual java/util/Scanner/next()Ljava/lang/String;");
-           }
-           $valueType = "READ_STRING";
-           $text = "read_string()";
-       }
+   | read_int
+   | read_double
+   | read_string
    | VAR    {
                 Integer v = memory.get($VAR.text);
                 if (v != null) {
@@ -607,26 +572,6 @@ factor
                     System.out.println("    ldc " + $NUM.text); 
                 }
             }
-   |   READ_INT OPEN_P CLOSE_P
-            {
-                if (inFunction) {
-                    functionBodyBuilder.append("    getstatic ROSATest/scanner Ljava/util/Scanner;\n");
-                    functionBodyBuilder.append("    invokevirtual java/util/Scanner/nextInt()I\n");
-                } else {
-                    System.out.println("    getstatic ROSATest/scanner Ljava/util/Scanner;");
-                    System.out.println("    invokevirtual java/util/Scanner/nextInt()I");
-                }
-            }
-   |   READ_DOUBLE OPEN_P CLOSE_P
-            {
-                if (inFunction) {
-                    functionBodyBuilder.append("    getstatic ROSATest/scanner Ljava/util/Scanner;\n");
-                    functionBodyBuilder.append("    invokevirtual java/util/Scanner/nextDouble()D\n");
-                } else {
-                    System.out.println("    getstatic ROSATest/scanner Ljava/util/Scanner;");
-                    System.out.println("    invokevirtual java/util/Scanner/nextDouble()D");
-                }
-            }
    |   VAR
             {
                 Integer v = memory.get($VAR.text);
@@ -680,6 +625,9 @@ factor
                     System.out.println("    ldc2_w " + $DOUBLE.text); 
                 }
             }
+   |   read_int
+   |   read_double
+   |   read_string
    |   function_call
    |   array_get
    |   array_length
@@ -886,3 +834,42 @@ read_statement
            }
        }
    ;
+
+read_int
+   :   READ_INT OPEN_P CLOSE_P
+            {
+                if (inFunction) {
+                    functionBodyBuilder.append("    getstatic ROSATest/scanner Ljava/util/Scanner;\n");
+                    functionBodyBuilder.append("    invokevirtual java/util/Scanner/nextInt()I\n");
+                } else {
+                    System.out.println("    getstatic ROSATest/scanner Ljava/util/Scanner;");
+                    System.out.println("    invokevirtual java/util/Scanner/nextInt()I");
+                }
+            }
+    ;
+
+read_double
+   :   READ_DOUBLE OPEN_P CLOSE_P
+            {
+                if (inFunction) {
+                    functionBodyBuilder.append("    getstatic ROSATest/scanner Ljava/util/Scanner;\n");
+                    functionBodyBuilder.append("    invokevirtual java/util/Scanner/nextDouble()D\n");
+                } else {
+                    System.out.println("    getstatic ROSATest/scanner Ljava/util/Scanner;");
+                    System.out.println("    invokevirtual java/util/Scanner/nextDouble()D");
+                }
+            }
+    ;
+
+read_string
+    : READ_STRING OPEN_P CLOSE_P
+            {
+                 if (inFunction) {
+                      functionBodyBuilder.append("    getstatic ROSATest/scanner Ljava/util/Scanner;\n");
+                      functionBodyBuilder.append("    invokevirtual java/util/Scanner/next()Ljava/lang/String;\n");
+                 } else {
+                      System.out.println("    getstatic ROSATest/scanner Ljava/util/Scanner;");
+                      System.out.println("    invokevirtual java/util/Scanner/next()Ljava/lang/String;");
+                 }
+            }
+    ;
