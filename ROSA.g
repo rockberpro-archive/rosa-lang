@@ -701,88 +701,26 @@ statement_print
         {
             if (inFunction) {
                 functionBodyBuilder.append("    getstatic java/lang/System/out Ljava/io/PrintStream;\n");
-                if ($value.valueType.equals("ARRAY_LENGTH")) {
-                    // Para array_length, o valor já foi gerado e está na pilha
-                    // Precisamos trocar: [int, PrintStream] -> [PrintStream, int]
-                    functionBodyBuilder.append("    swap\n");
+                functionBodyBuilder.append("    swap\n"); // value já está na pilha, então swap para colocar PrintStream por baixo
+                if ($value.valueType.equals("VAR") || $value.valueType.equals("INT")) {
                     functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(I)V\n");
-                } else if ($value.valueType.equals("ARRAY_GET")) {
-                    // Para array_get, temos [int] na pilha e [PrintStream] foi colocado depois
-                    // Precisamos usar swap para trocar: [int, PrintStream] -> [PrintStream, int]
-                    functionBodyBuilder.append("    swap\n");
-                    functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(I)V\n");
-                } else if ($value.valueType.equals("INT")) {
-                    functionBodyBuilder.append("    ldc " + $value.text + "\n");
-                    functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(I)V\n");
-                } else if ($value.valueType.equals("VAR")) {
-                    Integer v = memory.get($value.text);
-                    if (v != null) {
-                        functionBodyBuilder.append("    iload " + v + "\n");
-                        functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(I)V\n");
-                    }
-                } else if ($value.valueType.equals("DOUBLE_VAR")) {
-                    Integer v = memory.get($value.text);
-                    if (v != null) {
-                        functionBodyBuilder.append("    dload " + v + "\n");
-                        functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(D)V\n");
-                    }
-                } else if ($value.valueType.equals("STRING_VAR")) {
-                    Integer v = memory.get($value.text);
-                    if (v != null) {
-                        functionBodyBuilder.append("    aload " + v + "\n");
-                        functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V\n");
-                    }
-                } else if ($value.valueType.equals("ARRAY_LENGTH")) {
-                    // O array_length já deixou o valor na pilha, só precisamos imprimir
-                    functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(I)V\n");
-                } else if ($value.valueType.equals("ARRAY_GET")) {
-                    // O array_get já deixou o valor na pilha, só precisamos imprimir
+                } else if ($value.valueType.equals("DOUBLE_VAR") || $value.valueType.equals("DOUBLE")) {
+                    functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(D)V\n");
+                } else if ($value.valueType.equals("STRING_VAR") || $value.valueType.equals("STRING")) {
+                    functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V\n");
+                } else if ($value.valueType.equals("ARRAY_LENGTH") || $value.valueType.equals("ARRAY_GET")) {
                     functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(I)V\n");
                 }
             } else {
                 System.out.println("    getstatic java/lang/System/out Ljava/io/PrintStream;");
-                if ($value.valueType.equals("ARRAY_LENGTH")) {
-                    // Para array_length, o valor já foi gerado e está na pilha
-                    // Precisamos trocar: [int, PrintStream] -> [PrintStream, int]
-                    System.out.println("    swap");
+                System.out.println("    swap"); // value já está na pilha, então swap para colocar PrintStream por baixo
+                if ($value.valueType.equals("VAR") || $value.valueType.equals("INT")) {
                     System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
-                } else if ($value.valueType.equals("ARRAY_GET")) {
-                    // Para array_get, temos [int] na pilha e [PrintStream] foi colocado depois
-                    // Precisamos usar swap para trocar: [int, PrintStream] -> [PrintStream, int]
-                    System.out.println("    swap");
-                    System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
-                } else if ($value.valueType.equals("INT")) {
-                    System.out.println("    ldc " + $value.text);
-                    System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
-                } else if ($value.valueType.equals("VAR")) {
-                    Integer v = memory.get($value.text);
-                    if (v != null) {
-                        System.out.println("    iload " + v);
-                        System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
-                    } else {
-                        System.err.println("undefined variable " + $value.text);
-                    }
-                } else if ($value.valueType.equals("DOUBLE_VAR")) {
-                    Integer v = memory.get($value.text);
-                    if (v != null) {
-                        System.out.println("    dload " + v);
-                        System.out.println("    invokevirtual java/io/PrintStream/println(D)V");
-                    } else {
-                        System.err.println("undefined variable " + $value.text);
-                    }
-                } else if ($value.valueType.equals("STRING_VAR")) {
-                    Integer v = memory.get($value.text);
-                    if (v != null) {
-                        System.out.println("    aload " + v);
-                        System.out.println("    invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V");
-                    } else {
-                        System.err.println("undefined variable " + $value.text);
-                    }
-                } else if ($value.valueType.equals("ARRAY_LENGTH")) {
-                    // O array_length já deixou o valor na pilha, só precisamos imprimir
-                    System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
-                } else if ($value.valueType.equals("ARRAY_GET")) {
-                    // O array_get já deixou o valor na pilha, só precisamos imprimir
+                } else if ($value.valueType.equals("DOUBLE_VAR") || $value.valueType.equals("DOUBLE")) {
+                    System.out.println("    invokevirtual java/io/PrintStream/println(D)V");
+                } else if ($value.valueType.equals("STRING_VAR") || $value.valueType.equals("STRING")) {
+                    System.out.println("    invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V");
+                } else if ($value.valueType.equals("ARRAY_LENGTH") || $value.valueType.equals("ARRAY_GET")) {
                     System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
                 }
             }
