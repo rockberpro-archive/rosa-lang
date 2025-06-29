@@ -328,9 +328,9 @@ value returns [String valueType, String text]
    | NUM    { $valueType = "INT";    $text = $NUM.text; }
    | DOUBLE { $valueType = "DOUBLE"; $text = $DOUBLE.text; }
    | function_call { $valueType = $function_call.valueType; $text = $function_call.text; }
-   | read_int
-   | read_double
-   | read_string
+   | read_int { $valueType = $read_int.valueType; $text = $read_int.text; }
+   | read_double { $valueType = $read_double.valueType; $text = $read_double.text; }
+   | read_string { $valueType = $read_string.valueType; $text = $read_string.text; }
    | VAR    {
                 Integer v = memory.get($VAR.text);
                 if (v != null) {
@@ -349,8 +349,8 @@ value returns [String valueType, String text]
                     $text = $VAR.text;
                 }
             }
-   | array_get
-   | array_length
+   | array_get { $valueType = $array_get.valueType; $text = $array_get.text; }
+   | array_length { $valueType = $array_length.valueType; $text = $array_length.text; }
    ;
 
 statement_if
@@ -727,7 +727,7 @@ array_set
        }
    ;
 
-array_get
+array_get returns [String valueType, String text]
    : ARRAY_GET OPEN_P VAR COMMA
        {
            // Primeiro carregamos o array
@@ -755,10 +755,12 @@ array_get
                System.out.println("    checkcast java/lang/Integer");
                System.out.println("    invokevirtual java/lang/Integer/intValue()I");
            }
+           $valueType = "ARRAY_GET";
+           $text = $VAR.text;
        }
    ;
 
-array_length
+array_length returns [String valueType, String text]
     : ARRAY_LENGTH OPEN_P VAR CLOSE_P
        {
            // Carrega o array primeiro
@@ -780,6 +782,8 @@ array_length
            } else {
                System.out.println("    invokevirtual java/util/ArrayList/size()I");
            }
+           $valueType = "ARRAY_LENGTH";
+           $text = $VAR.text;
        }
     ;
 
@@ -835,7 +839,7 @@ read_statement
        }
    ;
 
-read_int
+read_int returns [String valueType, String text]
    :   READ_INT OPEN_P CLOSE_P
             {
                 if (inFunction) {
@@ -845,10 +849,12 @@ read_int
                     System.out.println("    getstatic ROSATest/scanner Ljava/util/Scanner;");
                     System.out.println("    invokevirtual java/util/Scanner/nextInt()I");
                 }
+                $valueType = "READ_INT";
+                $text = "read_int()";
             }
     ;
 
-read_double
+read_double returns [String valueType, String text]
    :   READ_DOUBLE OPEN_P CLOSE_P
             {
                 if (inFunction) {
@@ -858,10 +864,12 @@ read_double
                     System.out.println("    getstatic ROSATest/scanner Ljava/util/Scanner;");
                     System.out.println("    invokevirtual java/util/Scanner/nextDouble()D");
                 }
+                $valueType = "READ_DOUBLE";
+                $text = "read_double()";
             }
     ;
 
-read_string
+read_string returns [String valueType, String text]
     : READ_STRING OPEN_P CLOSE_P
             {
                  if (inFunction) {
@@ -871,5 +879,7 @@ read_string
                       System.out.println("    getstatic ROSATest/scanner Ljava/util/Scanner;");
                       System.out.println("    invokevirtual java/util/Scanner/next()Ljava/lang/String;");
                  }
+                 $valueType = "READ_STRING";
+                 $text = "read_string()";
             }
     ;
