@@ -110,6 +110,8 @@ program
                            signature.append("D");
                        } else if (paramType.equals("string")) {
                            signature.append("Ljava/lang/String;");
+                       } else if (paramType.equals("array")) {
+                           signature.append("Ljava/util/ArrayList;");
                        }
                    }
                }
@@ -135,6 +137,9 @@ program
                                System.out.println("    dload " + i);
                                System.out.println("    dstore " + slot);
                            } else if (paramType.equals("string")) {
+                               System.out.println("    aload " + i);
+                               System.out.println("    astore " + slot);
+                           } else if (paramType.equals("array")) {
                                System.out.println("    aload " + i);
                                System.out.println("    astore " + slot);
                            }
@@ -205,6 +210,7 @@ type_spec returns [String typeValue]
    : INT_TYPE    { $typeValue = "int"; }
    | DOUBLE_TYPE { $typeValue = "double"; }
    | STRING_TYPE { $typeValue = "string"; }
+   | ARRAY_TYPE  { $typeValue = "array"; }
    ;
 
 return_statement
@@ -234,6 +240,8 @@ function_call returns [String valueType, String text]
                            signature.append("D");
                        } else if (paramType.equals("string")) {
                            signature.append("Ljava/lang/String;");
+                       } else if (paramType.equals("array")) {
+                           signature.append("Ljava/util/ArrayList;");
                        }
                    }
                }
@@ -707,6 +715,12 @@ factor
                                 System.out.println("    dload " + v.intValue());
                             }
                         } else if (varType.equals("string")) {
+                            if (inFunction) {
+                                functionBodyBuilder.append("    aload " + v.intValue() + "\n");
+                            } else {
+                                System.out.println("    aload " + v.intValue());
+                            }
+                        } else if (varType.equals("array")) {
                             if (inFunction) {
                                 functionBodyBuilder.append("    aload " + v.intValue() + "\n");
                             } else {
