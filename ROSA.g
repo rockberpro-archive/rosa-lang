@@ -406,17 +406,64 @@ statement_while
         {
             int label_start = counter++;
             int label_end = counter++;
-            System.out.println("label_" + label_start + ":");
+            if (inFunction) {
+                functionBodyBuilder.append("label_" + label_start + ":\n");
+            } else {
+                System.out.println("label_" + label_start + ":");
+            }
         }
-        condition CLOSE_P OPEN_C
+        expression ( '==' | '!=' | '<' | '<=' | '>' | '>=' ) expression CLOSE_P OPEN_C
         {
-            System.out.println("    if_icmpge label_" + (counter - 1));
+            // Gera a instrução de comparação baseada no operador
+            String operator = $text;
+            if (operator.contains("<=")) {
+                if (inFunction) {
+                    functionBodyBuilder.append("    if_icmpgt label_" + (counter - 1) + "\n");
+                } else {
+                    System.out.println("    if_icmpgt label_" + (counter - 1));
+                }
+            } else if (operator.contains(">=")) {
+                if (inFunction) {
+                    functionBodyBuilder.append("    if_icmplt label_" + (counter - 1) + "\n");
+                } else {
+                    System.out.println("    if_icmplt label_" + (counter - 1));
+                }
+            } else if (operator.contains("<")) {
+                if (inFunction) {
+                    functionBodyBuilder.append("    if_icmpge label_" + (counter - 1) + "\n");
+                } else {
+                    System.out.println("    if_icmpge label_" + (counter - 1));
+                }
+            } else if (operator.contains(">")) {
+                if (inFunction) {
+                    functionBodyBuilder.append("    if_icmple label_" + (counter - 1) + "\n");
+                } else {
+                    System.out.println("    if_icmple label_" + (counter - 1));
+                }
+            } else if (operator.contains("==")) {
+                if (inFunction) {
+                    functionBodyBuilder.append("    if_icmpne label_" + (counter - 1) + "\n");
+                } else {
+                    System.out.println("    if_icmpne label_" + (counter - 1));
+                }
+            } else if (operator.contains("!=")) {
+                if (inFunction) {
+                    functionBodyBuilder.append("    if_icmpeq label_" + (counter - 1) + "\n");
+                } else {
+                    System.out.println("    if_icmpeq label_" + (counter - 1));
+                }
+            }
         }
         ( statement )*
     CLOSE_C
         {
-            System.out.println("    goto label_" + (counter - 2));
-            System.out.println("label_" + (counter - 1) + ":");
+            if (inFunction) {
+                functionBodyBuilder.append("    goto label_" + (counter - 2) + "\n");
+                functionBodyBuilder.append("label_" + (counter - 1) + ":\n");
+            } else {
+                System.out.println("    goto label_" + (counter - 2));
+                System.out.println("label_" + (counter - 1) + ":");
+            }
         }
    ;
 
@@ -526,14 +573,8 @@ statement_textcolor
 condition
    : expression ( '==' | '!=' | '<' | '<=' | '>' | '>=' ) expression
         {
-            switch ($text) {
-                case "==": System.out.println("    if_icmpeq label_" + counter); break;
-                case "!=": System.out.println("    if_icmpne label_" + counter); break;
-                case "<":  System.out.println("    if_icmplt label_" + counter); break;
-                case "<=": System.out.println("    if_icmple label_" + counter); break;
-                case ">":  System.out.println("    if_icmpgt label_" + counter); break;
-                case ">=": System.out.println("    if_icmpge label_" + counter); break;
-            }
+            // Nota: As instruções de comparação são geradas pelo contexto que chama condition
+            // não aqui diretamente
         }
    ;
 
