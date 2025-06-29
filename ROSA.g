@@ -700,28 +700,40 @@ statement_print
    | PRINT OPEN_P value CLOSE_P
         {
             if (inFunction) {
-                functionBodyBuilder.append("    getstatic java/lang/System/out Ljava/io/PrintStream;\n");
-                functionBodyBuilder.append("    swap\n"); // value já está na pilha, então swap para colocar PrintStream por baixo
-                if ($value.valueType.equals("VAR") || $value.valueType.equals("INT")) {
-                    functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(I)V\n");
-                } else if ($value.valueType.equals("DOUBLE_VAR") || $value.valueType.equals("DOUBLE")) {
+                if ($value.valueType.equals("DOUBLE_VAR") || $value.valueType.equals("DOUBLE")) {
+                    // Para doubles, não usar getstatic antes, fazer depois
+                    functionBodyBuilder.append("    getstatic java/lang/System/out Ljava/io/PrintStream;\n");
+                    functionBodyBuilder.append("    dup_x2\n");  // duplica PrintStream abaixo do double
+                    functionBodyBuilder.append("    pop\n");    // remove PrintStream do topo
                     functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(D)V\n");
-                } else if ($value.valueType.equals("STRING_VAR") || $value.valueType.equals("STRING")) {
-                    functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V\n");
-                } else if ($value.valueType.equals("ARRAY_LENGTH") || $value.valueType.equals("ARRAY_GET")) {
-                    functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(I)V\n");
+                } else {
+                    functionBodyBuilder.append("    getstatic java/lang/System/out Ljava/io/PrintStream;\n");
+                    functionBodyBuilder.append("    swap\n"); // value já está na pilha, então swap para colocar PrintStream por baixo
+                    if ($value.valueType.equals("VAR") || $value.valueType.equals("INT")) {
+                        functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(I)V\n");
+                    } else if ($value.valueType.equals("STRING_VAR") || $value.valueType.equals("STRING")) {
+                        functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V\n");
+                    } else if ($value.valueType.equals("ARRAY_LENGTH") || $value.valueType.equals("ARRAY_GET")) {
+                        functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(I)V\n");
+                    }
                 }
             } else {
-                System.out.println("    getstatic java/lang/System/out Ljava/io/PrintStream;");
-                System.out.println("    swap"); // value já está na pilha, então swap para colocar PrintStream por baixo
-                if ($value.valueType.equals("VAR") || $value.valueType.equals("INT")) {
-                    System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
-                } else if ($value.valueType.equals("DOUBLE_VAR") || $value.valueType.equals("DOUBLE")) {
+                if ($value.valueType.equals("DOUBLE_VAR") || $value.valueType.equals("DOUBLE")) {
+                    // Para doubles, não usar getstatic antes, fazer depois
+                    System.out.println("    getstatic java/lang/System/out Ljava/io/PrintStream;");
+                    System.out.println("    dup_x2");  // duplica PrintStream abaixo do double
+                    System.out.println("    pop");     // remove PrintStream do topo
                     System.out.println("    invokevirtual java/io/PrintStream/println(D)V");
-                } else if ($value.valueType.equals("STRING_VAR") || $value.valueType.equals("STRING")) {
-                    System.out.println("    invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V");
-                } else if ($value.valueType.equals("ARRAY_LENGTH") || $value.valueType.equals("ARRAY_GET")) {
-                    System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
+                } else {
+                    System.out.println("    getstatic java/lang/System/out Ljava/io/PrintStream;");
+                    System.out.println("    swap"); // value já está na pilha, então swap para colocar PrintStream por baixo
+                    if ($value.valueType.equals("VAR") || $value.valueType.equals("INT")) {
+                        System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
+                    } else if ($value.valueType.equals("STRING_VAR") || $value.valueType.equals("STRING")) {
+                        System.out.println("    invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V");
+                    } else if ($value.valueType.equals("ARRAY_LENGTH") || $value.valueType.equals("ARRAY_GET")) {
+                        System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
+                    }
                 }
             }
         }
