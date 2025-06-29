@@ -64,11 +64,11 @@ STRING_TYPE : 'string'  ;
 ARRAY_TYPE  : 'array' ;
 
 // Tokens para operações de arrays
-PUSH        : 'push' ;
-POP         : 'pop' ;
-LENGTH      : 'length' ;
-GET         : 'get' ;
-SET         : 'set' ;
+ARRAY_PUSH   : 'array_push' ;
+ARRAY_POP    : 'array_pop' ;
+ARRAY_LENGTH : 'array_length' ;
+ARRAY_GET    : 'array_get' ;
+ARRAY_SET    : 'array_set' ;
 
 
 VAR     : 'a'..'z'+ ;
@@ -270,7 +270,7 @@ value returns [String valueType, String text]
    | NUM    { $valueType = "INT";    $text = $NUM.text; }
    | DOUBLE { $valueType = "DOUBLE"; $text = $DOUBLE.text; }
    | function_call { $valueType = $function_call.valueType; $text = $function_call.text; }
-   | LENGTH OPEN_P VAR CLOSE_P
+   | ARRAY_LENGTH OPEN_P VAR CLOSE_P
        {
            Integer v = memory.get($VAR.text);
            if (v != null && variableTypes.get($VAR.text).equals("array")) {
@@ -564,7 +564,7 @@ factor
                 }
             }
    |   function_call
-   |   GET OPEN_P VAR COMMA
+   |   ARRAY_GET OPEN_P VAR COMMA
        {
            // Primeiro carregamos o array
            Integer v = memory.get($VAR.text);
@@ -596,7 +596,7 @@ factor
    ;
 
 array_push
-   : PUSH OPEN_P VAR COMMA
+   : ARRAY_PUSH OPEN_P VAR COMMA
        {
            // Carrega o array primeiro
            Integer v = memory.get($VAR.text);
@@ -626,7 +626,7 @@ array_push
    ;
 
 array_pop
-   : POP OPEN_P VAR CLOSE_P
+   : ARRAY_POP OPEN_P VAR CLOSE_P
        {
            // arr.remove(arr.size()-1) - remove último elemento
            Integer v = memory.get($VAR.text);
@@ -655,7 +655,7 @@ array_pop
    ;
 
 array_set
-   : SET OPEN_P VAR COMMA
+   : ARRAY_SET OPEN_P VAR COMMA
        {
            // Carrega o array primeiro
            Integer v = memory.get($VAR.text);

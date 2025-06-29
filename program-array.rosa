@@ -1,23 +1,23 @@
 main() {
     array numbers
-    push(numbers, 10)
-    push(numbers, 20)
-    push(numbers, 30)
+    array_push(numbers, 10)
+    array_push(numbers, 20)
+    array_push(numbers, 30)
     
-    print(length(numbers))
+    print(array_length(numbers))
     
-    print(get(numbers, 0))
-    print(get(numbers, 1))
-    print(get(numbers, 2))
+    print(array_get(numbers, 0))
+    print(array_get(numbers, 1))
+    print(array_get(numbers, 2))
     
-    set(numbers, 1, 99)
+    array_set(numbers, 1, 99)
     
-    print(get(numbers, 1))
+    print(array_get(numbers, 1))
     
-    pop(numbers)
+    array_pop(numbers)
     
-    print(length(numbers))
+    print(array_length(numbers))
     
-    print(get(numbers, 0))
-    print(get(numbers, 1))
+    print(array_get(numbers, 0))
+    print(array_get(numbers, 1))
 }
