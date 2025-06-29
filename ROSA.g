@@ -10,6 +10,7 @@
    import java.util.LinkedHashMap;
    import java.util.ArrayList;
    import java.util.Scanner;
+   import java.util.Locale;
 }
 
 
@@ -176,12 +177,16 @@ main
                System.out.println("    return");
                System.out.println(".end method\n");
                System.out.println(".method static <clinit>()V");
-               System.out.println(".limit stack 3");
+               System.out.println(".limit stack 5");
                System.out.println(".limit locals 0");
                System.out.println("    new java/util/Scanner");
                System.out.println("    dup");
                System.out.println("    getstatic java/lang/System/in Ljava/io/InputStream;");
                System.out.println("    invokespecial java/util/Scanner/<init>(Ljava/io/InputStream;)V");
+               System.out.println("    dup");
+               System.out.println("    getstatic java/util/Locale/US Ljava/util/Locale;");
+               System.out.println("    invokevirtual java/util/Scanner/useLocale(Ljava/util/Locale;)Ljava/util/Scanner;");
+               System.out.println("    pop");
                System.out.println("    putstatic ROSATest/scanner Ljava/util/Scanner;");
                System.out.println("    return");
                System.out.println(".end method\n");
