@@ -701,7 +701,20 @@ statement_print
         {
             if (inFunction) {
                 functionBodyBuilder.append("    getstatic java/lang/System/out Ljava/io/PrintStream;\n");
-                if ($value.valueType.equals("INT")) {
+                if ($value.valueType.equals("ARRAY_LENGTH")) {
+                    // Para array_length, precisamos gerar o código completo
+                    Integer v = memory.get($value.text);
+                    if (v != null) {
+                        functionBodyBuilder.append("    aload " + v + "\n");
+                        functionBodyBuilder.append("    invokevirtual java/util/ArrayList/size()I\n");
+                    }
+                    functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(I)V\n");
+                } else if ($value.valueType.equals("ARRAY_GET")) {
+                    // Para array_get, temos [int] na pilha e [PrintStream] foi colocado depois
+                    // Precisamos usar swap para trocar: [int, PrintStream] -> [PrintStream, int]
+                    functionBodyBuilder.append("    swap\n");
+                    functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(I)V\n");
+                } else if ($value.valueType.equals("INT")) {
                     functionBodyBuilder.append("    ldc " + $value.text + "\n");
                     functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(I)V\n");
                 } else if ($value.valueType.equals("VAR")) {
@@ -722,10 +735,29 @@ statement_print
                         functionBodyBuilder.append("    aload " + v + "\n");
                         functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V\n");
                     }
+                } else if ($value.valueType.equals("ARRAY_LENGTH")) {
+                    // O array_length já deixou o valor na pilha, só precisamos imprimir
+                    functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(I)V\n");
+                } else if ($value.valueType.equals("ARRAY_GET")) {
+                    // O array_get já deixou o valor na pilha, só precisamos imprimir
+                    functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(I)V\n");
                 }
             } else {
                 System.out.println("    getstatic java/lang/System/out Ljava/io/PrintStream;");
-                if ($value.valueType.equals("INT")) {
+                if ($value.valueType.equals("ARRAY_LENGTH")) {
+                    // Para array_length, precisamos gerar o código completo
+                    Integer v = memory.get($value.text);
+                    if (v != null) {
+                        System.out.println("    aload " + v);
+                        System.out.println("    invokevirtual java/util/ArrayList/size()I");
+                    }
+                    System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
+                } else if ($value.valueType.equals("ARRAY_GET")) {
+                    // Para array_get, temos [int] na pilha e [PrintStream] foi colocado depois
+                    // Precisamos usar swap para trocar: [int, PrintStream] -> [PrintStream, int]
+                    System.out.println("    swap");
+                    System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
+                } else if ($value.valueType.equals("INT")) {
                     System.out.println("    ldc " + $value.text);
                     System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
                 } else if ($value.valueType.equals("VAR")) {
@@ -752,16 +784,30 @@ statement_print
                     } else {
                         System.err.println("undefined variable " + $value.text);
                     }
+                } else if ($value.valueType.equals("ARRAY_LENGTH")) {
+                    // O array_length já deixou o valor na pilha, só precisamos imprimir
+                    System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
+                } else if ($value.valueType.equals("ARRAY_GET")) {
+                    // O array_get já deixou o valor na pilha, só precisamos imprimir
+                    System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
                 }
             }
         }
    | PRINT OPEN_P
         {
-            System.out.println("    getstatic java/lang/System/out Ljava/io/PrintStream;");
+            if (inFunction) {
+                functionBodyBuilder.append("    getstatic java/lang/System/out Ljava/io/PrintStream;\n");
+            } else {
+                System.out.println("    getstatic java/lang/System/out Ljava/io/PrintStream;");
+            }
         }
         expression CLOSE_P
         {
-            System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
+            if (inFunction) {
+                functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(I)V\n");
+            } else {
+                System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
+            }
         }
    ;
 
@@ -1016,27 +1062,17 @@ array_get returns [String valueType, String text]
 array_length returns [String valueType, String text]
     : ARRAY_LENGTH OPEN_P VAR CLOSE_P
        {
-           // Carrega o array primeiro
+           // Não gera código aqui, deixa para a regra que usa o array_length
            Integer v = memory.get($VAR.text);
            if (v != null && variableTypes.get($VAR.text).equals("array")) {
-               if (inFunction) {
-                   functionBodyBuilder.append("    aload " + v + "\n");
-               } else {
-                   System.out.println("    aload " + v);
-               }
+               // Apenas verifica se a variável existe e é um array
+               $valueType = "ARRAY_LENGTH";
+               $text = $VAR.text;
            } else {
                System.err.println("Variable " + $VAR.text + " is not an array or undefined");
+               $valueType = "UNDEF";
+               $text = $VAR.text;
            }
-       }
-       {
-           // Agora temos o array na pilha, vamos obter o tamanho
-           if (inFunction) {
-               functionBodyBuilder.append("    invokevirtual java/util/ArrayList/size()I\n");
-           } else {
-               System.out.println("    invokevirtual java/util/ArrayList/size()I");
-           }
-           $valueType = "ARRAY_LENGTH";
-           $text = $VAR.text;
        }
     ;
 
