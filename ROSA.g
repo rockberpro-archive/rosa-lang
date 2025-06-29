@@ -461,46 +461,82 @@ statement_if
             int label_false = counter++;
             int label_end = counter++;
 
-            System.out.println("    ; if condition");
-            System.out.println("    if_icmpeq label_" + label_true);
-            System.out.println("    goto label_" + label_false);
-            System.out.println("label_" + label_true + ":");
+            if (inFunction) {
+                functionBodyBuilder.append("    ; if condition\n");
+                functionBodyBuilder.append("    if_icmpeq label_" + label_true + "\n");
+                functionBodyBuilder.append("    goto label_" + label_false + "\n");
+                functionBodyBuilder.append("label_" + label_true + ":\n");
+            } else {
+                System.out.println("    ; if condition");
+                System.out.println("    if_icmpeq label_" + label_true);
+                System.out.println("    goto label_" + label_false);
+                System.out.println("label_" + label_true + ":");
+            }
         }
         ( statement )*
     CLOSE_C
         {
-            System.out.println("    goto label_" + label_end);
-            System.out.println("label_" + label_false + ":");
+            if (inFunction) {
+                functionBodyBuilder.append("    goto label_" + label_end + "\n");
+                functionBodyBuilder.append("label_" + label_false + ":\n");
+            } else {
+                System.out.println("    goto label_" + label_end);
+                System.out.println("label_" + label_false + ":");
+            }
         }
     ( 'or' OPEN_P condition CLOSE_P OPEN_C
         {
             int label_true_else_if = counter++;
             int label_false_else_if = counter++;
 
-            System.out.println("    ; else if condition");
-            System.out.println("    if_icmpeq label_" + label_true_else_if);
-            System.out.println("    goto label_" + label_false_else_if);
-            System.out.println("label_" + label_true_else_if + ":");
+            if (inFunction) {
+                functionBodyBuilder.append("    ; else if condition\n");
+                functionBodyBuilder.append("    if_icmpeq label_" + label_true_else_if + "\n");
+                functionBodyBuilder.append("    goto label_" + label_false_else_if + "\n");
+                functionBodyBuilder.append("label_" + label_true_else_if + ":\n");
+            } else {
+                System.out.println("    ; else if condition");
+                System.out.println("    if_icmpeq label_" + label_true_else_if);
+                System.out.println("    goto label_" + label_false_else_if);
+                System.out.println("label_" + label_true_else_if + ":");
+            }
         }
         ( statement )*
     CLOSE_C
         {
-            System.out.println("    goto label_" + label_end);
-            System.out.println("label_" + label_false_else_if + ":");
+            if (inFunction) {
+                functionBodyBuilder.append("    goto label_" + label_end + "\n");
+                functionBodyBuilder.append("label_" + label_false_else_if + ":\n");
+            } else {
+                System.out.println("    goto label_" + label_end);
+                System.out.println("label_" + label_false_else_if + ":");
+            }
         }
     )*
     ( 'not' OPEN_C
         {
-            System.out.println("    ; else block");
+            if (inFunction) {
+                functionBodyBuilder.append("    ; else block\n");
+            } else {
+                System.out.println("    ; else block");
+            }
         }
         ( statement )*
         CLOSE_C
         {
-            System.out.println("    ; end else block");
+            if (inFunction) {
+                functionBodyBuilder.append("    ; end else block\n");
+            } else {
+                System.out.println("    ; end else block");
+            }
         }
     )?
         {
-            System.out.println("label_" + label_end + ":"); // Rótulo para o fim do if-else
+            if (inFunction) {
+                functionBodyBuilder.append("label_" + label_end + ":\n"); // Rótulo para o fim do if-else
+            } else {
+                System.out.println("label_" + label_end + ":"); // Rótulo para o fim do if-else
+            }
         }
    ;
 
@@ -521,39 +557,39 @@ statement_while
             String operator = $text;
             if (operator.contains("<=")) {
                 if (inFunction) {
-                    functionBodyBuilder.append("    if_icmpgt label_" + (counter - 1) + "\n");
+                    functionBodyBuilder.append("    if_icmpgt label_" + label_end + "\n");
                 } else {
-                    System.out.println("    if_icmpgt label_" + (counter - 1));
+                    System.out.println("    if_icmpgt label_" + label_end);
                 }
             } else if (operator.contains(">=")) {
                 if (inFunction) {
-                    functionBodyBuilder.append("    if_icmplt label_" + (counter - 1) + "\n");
+                    functionBodyBuilder.append("    if_icmplt label_" + label_end + "\n");
                 } else {
-                    System.out.println("    if_icmplt label_" + (counter - 1));
+                    System.out.println("    if_icmplt label_" + label_end);
                 }
             } else if (operator.contains("<")) {
                 if (inFunction) {
-                    functionBodyBuilder.append("    if_icmpge label_" + (counter - 1) + "\n");
+                    functionBodyBuilder.append("    if_icmpge label_" + label_end + "\n");
                 } else {
-                    System.out.println("    if_icmpge label_" + (counter - 1));
+                    System.out.println("    if_icmpge label_" + label_end);
                 }
             } else if (operator.contains(">")) {
                 if (inFunction) {
-                    functionBodyBuilder.append("    if_icmple label_" + (counter - 1) + "\n");
+                    functionBodyBuilder.append("    if_icmple label_" + label_end + "\n");
                 } else {
-                    System.out.println("    if_icmple label_" + (counter - 1));
+                    System.out.println("    if_icmple label_" + label_end);
                 }
             } else if (operator.contains("==")) {
                 if (inFunction) {
-                    functionBodyBuilder.append("    if_icmpne label_" + (counter - 1) + "\n");
+                    functionBodyBuilder.append("    if_icmpne label_" + label_end + "\n");
                 } else {
-                    System.out.println("    if_icmpne label_" + (counter - 1));
+                    System.out.println("    if_icmpne label_" + label_end);
                 }
             } else if (operator.contains("!=")) {
                 if (inFunction) {
-                    functionBodyBuilder.append("    if_icmpeq label_" + (counter - 1) + "\n");
+                    functionBodyBuilder.append("    if_icmpeq label_" + label_end + "\n");
                 } else {
-                    System.out.println("    if_icmpeq label_" + (counter - 1));
+                    System.out.println("    if_icmpeq label_" + label_end);
                 }
             }
         }
@@ -561,11 +597,11 @@ statement_while
     CLOSE_C
         {
             if (inFunction) {
-                functionBodyBuilder.append("    goto label_" + (counter - 2) + "\n");
-                functionBodyBuilder.append("label_" + (counter - 1) + ":\n");
+                functionBodyBuilder.append("    goto label_" + label_start + "\n");
+                functionBodyBuilder.append("label_" + label_end + ":\n");
             } else {
-                System.out.println("    goto label_" + (counter - 2));
-                System.out.println("label_" + (counter - 1) + ":");
+                System.out.println("    goto label_" + label_start);
+                System.out.println("label_" + label_end + ":");
             }
         }
    ;
