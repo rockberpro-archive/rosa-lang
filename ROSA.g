@@ -20,10 +20,13 @@
    Map<String, String> variableTypes = new LinkedHashMap<String, String>(); // Para armazenar tipos das variáveis
    Map<String, Integer> functions = new LinkedHashMap<String, Integer>();
    Map<String, String> functionBodies = new LinkedHashMap<String, String>();
+   Map<String, ArrayList<String>> functionParameters = new LinkedHashMap<String, ArrayList<String>>(); // Para armazenar parâmetros das funções
+   Map<String, ArrayList<String>> functionParameterTypes = new LinkedHashMap<String, ArrayList<String>>(); // Para armazenar tipos dos parâmetros
    Integer counter = 1;
    Integer functionCounter = 1;
    boolean inFunction = false;
    StringBuilder functionBodyBuilder = new StringBuilder();
+   String currentFunctionName = "";
    static Scanner scanner = new Scanner(System.in); // Scanner global para leitura
 
    public static void main(String[] args) throws Exception
@@ -94,9 +97,51 @@ program
        {
            // Gera as funções no final
            for (String funcName : functions.keySet()) {
-               System.out.println(".method public static " + funcName + "()I");
+               // Construir assinatura da função
+               StringBuilder signature = new StringBuilder();
+               signature.append(".method public static ").append(funcName).append("(");
+               
+               if (functionParameterTypes.containsKey(funcName)) {
+                   ArrayList<String> paramTypes = functionParameterTypes.get(funcName);
+                   for (String paramType : paramTypes) {
+                       if (paramType.equals("int")) {
+                           signature.append("I");
+                       } else if (paramType.equals("double")) {
+                           signature.append("D");
+                       } else if (paramType.equals("string")) {
+                           signature.append("Ljava/lang/String;");
+                       }
+                   }
+               }
+               signature.append(")I");
+               
+               System.out.println(signature.toString());
                System.out.println(".limit stack 20");
                System.out.println(".limit locals 20");
+               
+               // Gerar código para armazenar parâmetros nas variáveis locais
+               if (functionParameters.containsKey(funcName)) {
+                   ArrayList<String> params = functionParameters.get(funcName);
+                   ArrayList<String> paramTypes = functionParameterTypes.get(funcName);
+                   for (int i = 0; i < params.size(); i++) {
+                       String paramName = params.get(i);
+                       String paramType = paramTypes.get(i);
+                       Integer slot = memory.get(paramName);
+                       if (slot != null) {
+                           if (paramType.equals("int")) {
+                               System.out.println("    iload " + i);
+                               System.out.println("    istore " + slot);
+                           } else if (paramType.equals("double")) {
+                               System.out.println("    dload " + i);
+                               System.out.println("    dstore " + slot);
+                           } else if (paramType.equals("string")) {
+                               System.out.println("    aload " + i);
+                               System.out.println("    astore " + slot);
+                           }
+                       }
+                   }
+               }
+               
                System.out.println(functionBodies.get(funcName));
                System.out.println("    ldc 0");
                System.out.println("    ireturn");
@@ -106,9 +151,10 @@ program
    ;
 
 function_def
-   : FUNCTION VAR OPEN_P (parameter_list)? CLOSE_P NL* OPEN_C
+   : FUNCTION VAR 
        {
            String funcName = $VAR.text;
+           currentFunctionName = funcName;
            if (!functions.containsKey(funcName)) {
                functions.put(funcName, functionCounter++);
                functionBodies.put(funcName, "");
@@ -116,18 +162,49 @@ function_def
            inFunction = true;
            functionBodyBuilder = new StringBuilder();
        }
+       OPEN_P (parameter_list)? CLOSE_P NL* OPEN_C
        NL* (statement NL*)*
        (return_statement NL*)?
    CLOSE_C
        {
            inFunction = false;
            // Armazena o corpo da função para gerar depois
-           functionBodies.put($VAR.text, functionBodyBuilder.toString());
+           functionBodies.put(currentFunctionName, functionBodyBuilder.toString());
+           currentFunctionName = "";
        }
    ;
 
 parameter_list
-   : VAR (COMMA VAR)*
+   : typed_parameter (COMMA typed_parameter)*
+   ;
+
+typed_parameter
+   : type_spec VAR
+       {
+           if (!functionParameters.containsKey(currentFunctionName)) {
+               functionParameters.put(currentFunctionName, new ArrayList<String>());
+               functionParameterTypes.put(currentFunctionName, new ArrayList<String>());
+           }
+           functionParameters.get(currentFunctionName).add($VAR.text);
+           
+           String paramType = $type_spec.typeValue;
+           functionParameterTypes.get(currentFunctionName).add(paramType);
+           
+           // Adicionar parâmetro à memória local da função
+           if (!memory.containsKey($VAR.text)) {
+               memory.put($VAR.text, counter++);
+               variableTypes.put($VAR.text, paramType);
+               if (paramType.equals("double")) {
+                   counter++; // Double ocupa 2 slots
+               }
+           }
+       }
+   ;
+
+type_spec returns [String typeValue]
+   : INT_TYPE    { $typeValue = "int"; }
+   | DOUBLE_TYPE { $typeValue = "double"; }
+   | STRING_TYPE { $typeValue = "string"; }
    ;
 
 return_statement
@@ -144,10 +221,28 @@ function_call returns [String valueType, String text]
        {
            String funcName = $VAR.text;
            if (functions.containsKey(funcName) || inFunction) {
+               // Construir assinatura da função com parâmetros
+               StringBuilder signature = new StringBuilder();
+               signature.append("    invokestatic ROSATest/").append(funcName).append("(");
+               
+               if (functionParameterTypes.containsKey(funcName)) {
+                   ArrayList<String> paramTypes = functionParameterTypes.get(funcName);
+                   for (String paramType : paramTypes) {
+                       if (paramType.equals("int")) {
+                           signature.append("I");
+                       } else if (paramType.equals("double")) {
+                           signature.append("D");
+                       } else if (paramType.equals("string")) {
+                           signature.append("Ljava/lang/String;");
+                       }
+                   }
+               }
+               signature.append(")I");
+               
                if (inFunction) {
-                   functionBodyBuilder.append("    invokestatic ROSATest/" + funcName + "()I\n");
+                   functionBodyBuilder.append(signature.toString()).append("\n");
                } else {
-                   System.out.println("    invokestatic ROSATest/" + funcName + "()I");
+                   System.out.println(signature.toString());
                }
                $valueType = "FUNCTION_CALL";
                $text = funcName;
@@ -470,9 +565,15 @@ statement_while
 statement_print
    : PRINT OPEN_P STRING CLOSE_P
         {
-            System.out.println("    getstatic java/lang/System/out Ljava/io/PrintStream;");
-            System.out.println("    ldc " + $STRING.text);
-            System.out.println("    invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V");
+            if (inFunction) {
+                functionBodyBuilder.append("    getstatic java/lang/System/out Ljava/io/PrintStream;\n");
+                functionBodyBuilder.append("    ldc " + $STRING.text + "\n");
+                functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V\n");
+            } else {
+                System.out.println("    getstatic java/lang/System/out Ljava/io/PrintStream;");
+                System.out.println("    ldc " + $STRING.text);
+                System.out.println("    invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V");
+            }
         }
    | PRINT OPEN_P DOUBLE CLOSE_P
         {
@@ -482,67 +583,49 @@ statement_print
         }
    | PRINT OPEN_P value CLOSE_P
         {
-            System.out.println("    getstatic java/lang/System/out Ljava/io/PrintStream;");
-            if ($value.valueType.equals("INT")) {
-                System.out.println("    ldc " + $value.text);
-                System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
-            } else if ($value.valueType.equals("DOUBLE")) {
-                System.out.println("    ldc2_w " + $value.text);
-                System.out.println("    invokevirtual java/io/PrintStream/println(D)V");
-            } else if ($value.valueType.equals("VAR")) {
-                Integer v = memory.get($value.text);
-                if (v != null) {
-                    String varType = variableTypes.get($value.text);
-                    if (varType != null && varType.equals("double")) {
-                        System.out.println("    dload " + v);
-                        System.out.println("    invokevirtual java/io/PrintStream/println(D)V");
-                    } else if (varType != null && varType.equals("string")) {
-                        System.out.println("    aload " + v);
-                        System.out.println("    invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V");
-                    } else {
-                        System.out.println("    iload " + v);
-                        System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
+            if (inFunction) {
+                functionBodyBuilder.append("    getstatic java/lang/System/out Ljava/io/PrintStream;\n");
+                if ($value.valueType.equals("INT")) {
+                    functionBodyBuilder.append("    ldc " + $value.text + "\n");
+                    functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(I)V\n");
+                } else if ($value.valueType.equals("VAR")) {
+                    Integer v = memory.get($value.text);
+                    if (v != null) {
+                        String varType = variableTypes.get($value.text);
+                        if (varType != null && varType.equals("double")) {
+                            functionBodyBuilder.append("    dload " + v + "\n");
+                            functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(D)V\n");
+                        } else if (varType != null && varType.equals("string")) {
+                            functionBodyBuilder.append("    aload " + v + "\n");
+                            functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V\n");
+                        } else {
+                            functionBodyBuilder.append("    iload " + v + "\n");
+                            functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(I)V\n");
+                        }
                     }
-                } else {
-                    System.err.println("undefined variable " + $value.text);
                 }
-            } else if ($value.valueType.equals("STRING_VAR")) {
-                Integer v = memory.get($value.text);
-                if (v != null) {
-                    System.out.println("    aload " + v);
-                    System.out.println("    invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V");
-                } else {
-                    System.err.println("undefined variable " + $value.text);
-                }
-            } else if ($value.valueType.equals("DOUBLE_VAR")) {
-                Integer v = memory.get($value.text);
-                if (v != null) {
-                    System.out.println("    dload " + v);
-                    System.out.println("    invokevirtual java/io/PrintStream/println(D)V");
-                } else {
-                    System.err.println("undefined variable " + $value.text);
-                }
-            } else if ($value.valueType.equals("FUNCTION_CALL")) {
-                // A função já foi chamada e o resultado está na pilha
-                System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
-            } else if ($value.valueType.equals("READ_INT")) {
-                // A leitura já foi feita e o resultado está na pilha
-                System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
-            } else if ($value.valueType.equals("READ_DOUBLE")) {
-                // A leitura já foi feita e o resultado está na pilha
-                System.out.println("    invokevirtual java/io/PrintStream/println(D)V");
-            } else if ($value.valueType.equals("READ_STRING")) {
-                // A leitura já foi feita e o resultado está na pilha
-                System.out.println("    invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V");
-            } else if ($value.valueType.equals("ARRAY_LENGTH")) {
-                // Gerar instruções para array.size()
-                Integer v = memory.get($value.text);
-                if (v != null) {
-                    System.out.println("    aload " + v);
-                    System.out.println("    invokevirtual java/util/ArrayList/size()I");
+            } else {
+                System.out.println("    getstatic java/lang/System/out Ljava/io/PrintStream;");
+                if ($value.valueType.equals("INT")) {
+                    System.out.println("    ldc " + $value.text);
                     System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
-                } else {
-                    System.err.println("undefined variable " + $value.text);
+                } else if ($value.valueType.equals("VAR")) {
+                    Integer v = memory.get($value.text);
+                    if (v != null) {
+                        String varType = variableTypes.get($value.text);
+                        if (varType != null && varType.equals("double")) {
+                            System.out.println("    dload " + v);
+                            System.out.println("    invokevirtual java/io/PrintStream/println(D)V");
+                        } else if (varType != null && varType.equals("string")) {
+                            System.out.println("    aload " + v);
+                            System.out.println("    invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V");
+                        } else {
+                            System.out.println("    iload " + v);
+                            System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
+                        }
+                    } else {
+                        System.err.println("undefined variable " + $value.text);
+                    }
                 }
             }
         }
