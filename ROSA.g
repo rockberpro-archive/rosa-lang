@@ -218,6 +218,8 @@ return_statement
        {
            if (inFunction) {
                functionBodyBuilder.append("    ireturn\n");
+           } else {
+               System.out.println("    ireturn");
            }
        }
    ;
@@ -427,18 +429,54 @@ typed_assignment
    ;
 
 value returns [String valueType, String text]
-   : STRING { $valueType = "STRING"; $text = $STRING.text; }
-   | NUM    { $valueType = "INT";    $text = $NUM.text; }
-   | DOUBLE { $valueType = "DOUBLE"; $text = $DOUBLE.text; }
+   : STRING { 
+                if (inFunction) {
+                    functionBodyBuilder.append("    ldc " + $STRING.text + "\n");
+                } else {
+                    System.out.println("    ldc " + $STRING.text);
+                }
+                $valueType = "STRING"; $text = $STRING.text; 
+            }
+   | NUM    { 
+                if (inFunction) {
+                    functionBodyBuilder.append("    ldc " + $NUM.text + "\n");
+                } else {
+                    System.out.println("    ldc " + $NUM.text);
+                }
+                $valueType = "INT";    $text = $NUM.text; 
+            }
+   | DOUBLE { 
+                if (inFunction) {
+                    functionBodyBuilder.append("    ldc2_w " + $DOUBLE.text + "\n");
+                } else {
+                    System.out.println("    ldc2_w " + $DOUBLE.text);
+                }
+                $valueType = "DOUBLE"; $text = $DOUBLE.text; 
+            }
    | VAR    {
                 Integer v = memory.get($VAR.text);
                 if (v != null) {
                     String varType = variableTypes.get($VAR.text);
                     if (varType != null && varType.equals("double")) {
+                        if (inFunction) {
+                            functionBodyBuilder.append("    dload " + v + "\n");
+                        } else {
+                            System.out.println("    dload " + v);
+                        }
                         $valueType = "DOUBLE_VAR";
                     } else if (varType != null && varType.equals("string")) {
+                        if (inFunction) {
+                            functionBodyBuilder.append("    aload " + v + "\n");
+                        } else {
+                            System.out.println("    aload " + v);
+                        }
                         $valueType = "STRING_VAR";
                     } else {
+                        if (inFunction) {
+                            functionBodyBuilder.append("    iload " + v + "\n");
+                        } else {
+                            System.out.println("    iload " + v);
+                        }
                         $valueType = "VAR";
                     }
                     $text = $VAR.text;
@@ -452,6 +490,8 @@ value returns [String valueType, String text]
    | read_int { $valueType = $read_int.valueType; $text = $read_int.text; }
    | read_double { $valueType = $read_double.valueType; $text = $read_double.text; }
    | read_string { $valueType = $read_string.valueType; $text = $read_string.text; }
+   | array_get { $valueType = $array_get.valueType; $text = $array_get.text; }
+   | array_length { $valueType = $array_length.valueType; $text = $array_length.text; }
    ;
 
 statement_if
