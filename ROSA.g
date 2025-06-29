@@ -212,6 +212,7 @@ statement
      array_push           |
      array_pop            |
      array_set            |
+     array_get            |
      read_statement
    ;
 
@@ -289,17 +290,15 @@ typed_assignment
                System.out.println("    dstore " + memory.get($VAR.text));
            }
        }
-   | STRING_TYPE VAR ATTRIB STRING
+   | STRING_TYPE VAR ATTRIB value
        {
            if (!memory.containsKey($VAR.text)) {
                memory.put($VAR.text, counter++);
                variableTypes.put($VAR.text, "string");
            }
            if (inFunction) {
-               functionBodyBuilder.append("    ldc " + $STRING.text + "\n");
                functionBodyBuilder.append("    astore " + memory.get($VAR.text) + "\n");
            } else {
-               System.out.println("    ldc " + $STRING.text);
                System.out.println("    astore " + memory.get($VAR.text));
            }
        }
@@ -328,55 +327,6 @@ value returns [String valueType, String text]
    : STRING { $valueType = "STRING"; $text = $STRING.text; }
    | NUM    { $valueType = "INT";    $text = $NUM.text; }
    | DOUBLE { $valueType = "DOUBLE"; $text = $DOUBLE.text; }
-   | function_call { $valueType = $function_call.valueType; $text = $function_call.text; }
-   | READ_INT OPEN_P CLOSE_P
-       {
-           if (inFunction) {
-               functionBodyBuilder.append("    getstatic ROSATest/scanner Ljava/util/Scanner;\n");
-               functionBodyBuilder.append("    invokevirtual java/util/Scanner/nextInt()I\n");
-           } else {
-               System.out.println("    getstatic ROSATest/scanner Ljava/util/Scanner;");
-               System.out.println("    invokevirtual java/util/Scanner/nextInt()I");
-           }
-           $valueType = "READ_INT";
-           $text = "read_int()";
-       }
-   | READ_DOUBLE OPEN_P CLOSE_P
-       {
-           if (inFunction) {
-               functionBodyBuilder.append("    getstatic ROSATest/scanner Ljava/util/Scanner;\n");
-               functionBodyBuilder.append("    invokevirtual java/util/Scanner/nextDouble()D\n");
-           } else {
-               System.out.println("    getstatic ROSATest/scanner Ljava/util/Scanner;");
-               System.out.println("    invokevirtual java/util/Scanner/nextDouble()D");
-           }
-           $valueType = "READ_DOUBLE";
-           $text = "read_double()";
-       }
-   | READ_STRING OPEN_P CLOSE_P
-       {
-           if (inFunction) {
-               functionBodyBuilder.append("    getstatic ROSATest/scanner Ljava/util/Scanner;\n");
-               functionBodyBuilder.append("    invokevirtual java/util/Scanner/next()Ljava/lang/String;\n");
-           } else {
-               System.out.println("    getstatic ROSATest/scanner Ljava/util/Scanner;");
-               System.out.println("    invokevirtual java/util/Scanner/next()Ljava/lang/String;");
-           }
-           $valueType = "READ_STRING";
-           $text = "read_string()";
-       }
-   | ARRAY_LENGTH OPEN_P VAR CLOSE_P
-       {
-           Integer v = memory.get($VAR.text);
-           if (v != null && variableTypes.get($VAR.text).equals("array")) {
-               $valueType = "ARRAY_LENGTH";
-               $text = $VAR.text;
-           } else {
-               System.err.println("Variable " + $VAR.text + " is not an array or undefined");
-               $valueType = "UNDEF";
-               $text = $VAR.text;
-           }
-       }
    | VAR    {
                 Integer v = memory.get($VAR.text);
                 if (v != null) {
@@ -395,6 +345,12 @@ value returns [String valueType, String text]
                     $text = $VAR.text;
                 }
             }
+   | function_call { $valueType = $function_call.valueType; $text = $function_call.text; }
+   | read_int { $valueType = $read_int.valueType; $text = $read_int.text; }
+   | read_double { $valueType = $read_double.valueType; $text = $read_double.text; }
+   | read_string { $valueType = $read_string.valueType; $text = $read_string.text; }
+   | array_get { $valueType = $array_get.valueType; $text = $array_get.text; }
+   | array_length { $valueType = $array_length.valueType; $text = $array_length.text; }
    ;
 
 statement_if
@@ -616,26 +572,6 @@ factor
                     System.out.println("    ldc " + $NUM.text); 
                 }
             }
-   |   READ_INT OPEN_P CLOSE_P
-            {
-                if (inFunction) {
-                    functionBodyBuilder.append("    getstatic ROSATest/scanner Ljava/util/Scanner;\n");
-                    functionBodyBuilder.append("    invokevirtual java/util/Scanner/nextInt()I\n");
-                } else {
-                    System.out.println("    getstatic ROSATest/scanner Ljava/util/Scanner;");
-                    System.out.println("    invokevirtual java/util/Scanner/nextInt()I");
-                }
-            }
-   |   READ_DOUBLE OPEN_P CLOSE_P
-            {
-                if (inFunction) {
-                    functionBodyBuilder.append("    getstatic ROSATest/scanner Ljava/util/Scanner;\n");
-                    functionBodyBuilder.append("    invokevirtual java/util/Scanner/nextDouble()D\n");
-                } else {
-                    System.out.println("    getstatic ROSATest/scanner Ljava/util/Scanner;");
-                    System.out.println("    invokevirtual java/util/Scanner/nextDouble()D");
-                }
-            }
    |   VAR
             {
                 Integer v = memory.get($VAR.text);
@@ -689,36 +625,12 @@ factor
                     System.out.println("    ldc2_w " + $DOUBLE.text); 
                 }
             }
+   |   read_int
+   |   read_double
+   |   read_string
    |   function_call
-   |   ARRAY_GET OPEN_P VAR COMMA
-       {
-           // Primeiro carregamos o array
-           Integer v = memory.get($VAR.text);
-           if (v != null && variableTypes.get($VAR.text).equals("array")) {
-               if (inFunction) {
-                   functionBodyBuilder.append("    aload " + v + "\n");
-               } else {
-                   System.out.println("    aload " + v);
-               }
-           } else {
-               System.err.println("Variable " + $VAR.text + " is not an array or undefined");
-           }
-       }
-       expression CLOSE_P
-       {
-           // Agora temos array na posição 0 da pilha e index na posição 1
-           // ArrayList.get(int) espera [array, index] na pilha
-           if (inFunction) {
-               functionBodyBuilder.append("    invokevirtual java/util/ArrayList/get(I)Ljava/lang/Object;\n");
-               functionBodyBuilder.append("    checkcast java/lang/Integer\n");
-               functionBodyBuilder.append("    invokevirtual java/lang/Integer/intValue()I\n");
-           } else {
-               System.out.println("    invokevirtual java/util/ArrayList/get(I)Ljava/lang/Object;");
-               System.out.println("    checkcast java/lang/Integer");
-               System.out.println("    invokevirtual java/lang/Integer/intValue()I");
-           }
-       }
-   |   OPEN_P expression CLOSE_P
+   |   array_get
+   |   array_length
    ;
 
 array_push
@@ -815,6 +727,66 @@ array_set
        }
    ;
 
+array_get returns [String valueType, String text]
+   : ARRAY_GET OPEN_P VAR COMMA
+       {
+           // Primeiro carregamos o array
+           Integer v = memory.get($VAR.text);
+           if (v != null && variableTypes.get($VAR.text).equals("array")) {
+               if (inFunction) {
+                   functionBodyBuilder.append("    aload " + v + "\n");
+               } else {
+                   System.out.println("    aload " + v);
+               }
+           } else {
+               System.err.println("Variable " + $VAR.text + " is not an array or undefined");
+           }
+       }
+       expression CLOSE_P
+       {
+           // Agora temos array na posição 0 da pilha e index na posição 1
+           // ArrayList.get(int) espera [array, index] na pilha
+           if (inFunction) {
+               functionBodyBuilder.append("    invokevirtual java/util/ArrayList/get(I)Ljava/lang/Object;\n");
+               functionBodyBuilder.append("    checkcast java/lang/Integer\n");
+               functionBodyBuilder.append("    invokevirtual java/lang/Integer/intValue()I\n");
+           } else {
+               System.out.println("    invokevirtual java/util/ArrayList/get(I)Ljava/lang/Object;");
+               System.out.println("    checkcast java/lang/Integer");
+               System.out.println("    invokevirtual java/lang/Integer/intValue()I");
+           }
+           $valueType = "ARRAY_GET";
+           $text = $VAR.text;
+       }
+   ;
+
+array_length returns [String valueType, String text]
+    : ARRAY_LENGTH OPEN_P VAR CLOSE_P
+       {
+           // Carrega o array primeiro
+           Integer v = memory.get($VAR.text);
+           if (v != null && variableTypes.get($VAR.text).equals("array")) {
+               if (inFunction) {
+                   functionBodyBuilder.append("    aload " + v + "\n");
+               } else {
+                   System.out.println("    aload " + v);
+               }
+           } else {
+               System.err.println("Variable " + $VAR.text + " is not an array or undefined");
+           }
+       }
+       {
+           // Agora temos o array na pilha, vamos obter o tamanho
+           if (inFunction) {
+               functionBodyBuilder.append("    invokevirtual java/util/ArrayList/size()I\n");
+           } else {
+               System.out.println("    invokevirtual java/util/ArrayList/size()I");
+           }
+           $valueType = "ARRAY_LENGTH";
+           $text = $VAR.text;
+       }
+    ;
+
 read_statement
    : VAR ATTRIB READ_INT OPEN_P CLOSE_P
        {
@@ -866,3 +838,48 @@ read_statement
            }
        }
    ;
+
+read_int returns [String valueType, String text]
+   :   READ_INT OPEN_P CLOSE_P
+            {
+                if (inFunction) {
+                    functionBodyBuilder.append("    getstatic ROSATest/scanner Ljava/util/Scanner;\n");
+                    functionBodyBuilder.append("    invokevirtual java/util/Scanner/nextInt()I\n");
+                } else {
+                    System.out.println("    getstatic ROSATest/scanner Ljava/util/Scanner;");
+                    System.out.println("    invokevirtual java/util/Scanner/nextInt()I");
+                }
+                $valueType = "READ_INT";
+                $text = "read_int()";
+            }
+    ;
+
+read_double returns [String valueType, String text]
+   :   READ_DOUBLE OPEN_P CLOSE_P
+            {
+                if (inFunction) {
+                    functionBodyBuilder.append("    getstatic ROSATest/scanner Ljava/util/Scanner;\n");
+                    functionBodyBuilder.append("    invokevirtual java/util/Scanner/nextDouble()D\n");
+                } else {
+                    System.out.println("    getstatic ROSATest/scanner Ljava/util/Scanner;");
+                    System.out.println("    invokevirtual java/util/Scanner/nextDouble()D");
+                }
+                $valueType = "READ_DOUBLE";
+                $text = "read_double()";
+            }
+    ;
+
+read_string returns [String valueType, String text]
+    : READ_STRING OPEN_P CLOSE_P
+            {
+                 if (inFunction) {
+                      functionBodyBuilder.append("    getstatic ROSATest/scanner Ljava/util/Scanner;\n");
+                      functionBodyBuilder.append("    invokevirtual java/util/Scanner/next()Ljava/lang/String;\n");
+                 } else {
+                      System.out.println("    getstatic ROSATest/scanner Ljava/util/Scanner;");
+                      System.out.println("    invokevirtual java/util/Scanner/next()Ljava/lang/String;");
+                 }
+                 $valueType = "READ_STRING";
+                 $text = "read_string()";
+            }
+    ;
