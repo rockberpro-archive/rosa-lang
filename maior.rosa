@@ -1,0 +1,35 @@
+procedure maiorvalor(array numeros) {
+    int maior = 0
+    int valor = 0
+    int length = array_length(numeros)
+    
+    int i = 0
+    aslong(i < length) {
+        valor = array_get(numeros, i)
+        is (maior < valor) {
+            maior = valor
+        }
+        i = i + 1
+    }
+    
+    return maior
+}
+
+main() {
+    print("Digite a quantidades de numeros a parametrizar:")
+    int quantidade = read_int()
+
+    int numero = 0
+    int j = 0
+    array numeros
+    aslong(j < quantidade) {
+        print("Digite um numero: ")
+        numero = read_int()
+        array_push(numeros, numero)
+        j = j + 1
+    }
+
+    int valor = call maiorvalor(numeros)
+    print("Maior numero e: ")
+    print(valor)
+}
