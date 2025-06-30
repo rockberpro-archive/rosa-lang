@@ -1,0 +1,30 @@
+main() {
+    print("Início do programa")
+    
+    goto loopstart
+    
+    print("Esta linha nunca será impressa")
+    
+    label loopstart:
+    print("Chegou ao label loopstart!")
+    
+    int contador = 1
+    
+    label loop:
+    print("Contador: ")
+    print(contador)
+    
+    contador = contador + 1
+    
+    is (contador < 5) {
+        goto loop
+    }
+    
+    print("Saindo do loop")
+    goto fim
+    
+    print("Código após o goto para fim")
+    
+    label fim:
+    print("Fim do programa")
+}

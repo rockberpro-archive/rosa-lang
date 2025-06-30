@@ -64,6 +64,9 @@ FUNCTION  : 'procedure' ;
 RETURN    : 'return' ;
 CALL      : 'call' ;
 COMMA     : ',' ;
+GOTO      : 'goto' ;
+LABEL     : 'label' ;
+COLON     : ':' ;
 
 // Adicionar tokens para tipos
 INT_TYPE    : 'int' ;
@@ -315,6 +318,8 @@ statement
      statement_textcolor  |
      statement_if         |
      statement_while      |
+     statement_goto       |
+     statement_label      |
      function_call        |
      array_push           |
      array_pop            |
@@ -1193,6 +1198,30 @@ read_statement
                System.out.println("    getstatic ROSATest/scanner Ljava/util/Scanner;");
                System.out.println("    invokevirtual java/util/Scanner/next()Ljava/lang/String;");
                System.out.println("    astore " + memory.get($VAR.text));
+           }
+       }
+   ;
+
+statement_goto
+   : GOTO VAR
+       {
+           String labelName = $VAR.text;
+           if (inFunction) {
+               functionBodyBuilder.append("    goto " + labelName + "\n");
+           } else {
+               System.out.println("    goto " + labelName);
+           }
+       }
+   ;
+
+statement_label
+   : LABEL VAR COLON
+       {
+           String labelName = $VAR.text;
+           if (inFunction) {
+               functionBodyBuilder.append(labelName + ":\n");
+           } else {
+               System.out.println(labelName + ":");
            }
        }
    ;
