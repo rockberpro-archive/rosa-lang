@@ -18,6 +18,7 @@
 {
    Map<String, Integer> memory = new LinkedHashMap<String, Integer>();
    Map<String, String> variableTypes = new LinkedHashMap<String, String>(); // Para armazenar tipos das variáveis
+   Map<String, String> arrayElementTypes = new LinkedHashMap<String, String>(); // Para armazenar tipos dos elementos dos arrays
    Map<String, Integer> functions = new LinkedHashMap<String, Integer>();
    Map<String, String> functionBodies = new LinkedHashMap<String, String>();
    Map<String, ArrayList<String>> functionParameters = new LinkedHashMap<String, ArrayList<String>>(); // Para armazenar parâmetros das funções
@@ -715,6 +716,12 @@ statement_print
                         functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V\n");
                     } else if ($value.valueType.equals("ARRAY_LENGTH") || $value.valueType.equals("ARRAY_GET")) {
                         functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(I)V\n");
+                    } else if ($value.valueType.equals("ARRAY_GET_STRING")) {
+                        functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V\n");
+                    } else if ($value.valueType.equals("ARRAY_GET_DOUBLE")) {
+                        functionBodyBuilder.append("    dup_x2\n");  // duplica PrintStream abaixo do double
+                        functionBodyBuilder.append("    pop\n");    // remove PrintStream do topo
+                        functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(D)V\n");
                     }
                 }
             } else {
@@ -733,6 +740,12 @@ statement_print
                         System.out.println("    invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V");
                     } else if ($value.valueType.equals("ARRAY_LENGTH") || $value.valueType.equals("ARRAY_GET")) {
                         System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
+                    } else if ($value.valueType.equals("ARRAY_GET_STRING")) {
+                        System.out.println("    invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V");
+                    } else if ($value.valueType.equals("ARRAY_GET_DOUBLE")) {
+                        System.out.println("    dup_x2");  // duplica PrintStream abaixo do double
+                        System.out.println("    pop");     // remove PrintStream do topo
+                        System.out.println("    invokevirtual java/io/PrintStream/println(D)V");
                     }
                 }
             }
@@ -891,17 +904,54 @@ array_push
                System.err.println("Variable " + $VAR.text + " is not an array or undefined");
            }
        }
-       expression CLOSE_P
+       value CLOSE_P
        {
            // Agora temos [array, value] na pilha - executar o add
-           if (inFunction) {
-               functionBodyBuilder.append("    invokestatic java/lang/Integer/valueOf(I)Ljava/lang/Integer;\n");
-               functionBodyBuilder.append("    invokevirtual java/util/ArrayList/add(Ljava/lang/Object;)Z\n");
-               functionBodyBuilder.append("    pop\n"); // remove o boolean retornado
+           // Verificar o tipo do valor e tratá-lo adequadamente
+           String valueType = $value.valueType;
+           
+           // Rastrear o tipo dos elementos do array (baseado no primeiro elemento adicionado)
+           if (!arrayElementTypes.containsKey($VAR.text)) {
+               if (valueType.equals("STRING") || valueType.equals("STRING_VAR")) {
+                   arrayElementTypes.put($VAR.text, "string");
+               } else if (valueType.equals("DOUBLE") || valueType.equals("DOUBLE_VAR")) {
+                   arrayElementTypes.put($VAR.text, "double");
+               } else {
+                   arrayElementTypes.put($VAR.text, "int");
+               }
+           }
+           
+           if (valueType.equals("STRING") || valueType.equals("STRING_VAR")) {
+               // Para strings, não precisa converter, já está como objeto
+               if (inFunction) {
+                   functionBodyBuilder.append("    invokevirtual java/util/ArrayList/add(Ljava/lang/Object;)Z\n");
+                   functionBodyBuilder.append("    pop\n"); // remove o boolean retornado
+               } else {
+                   System.out.println("    invokevirtual java/util/ArrayList/add(Ljava/lang/Object;)Z");
+                   System.out.println("    pop"); // remove o boolean retornado
+               }
+           } else if (valueType.equals("DOUBLE") || valueType.equals("DOUBLE_VAR")) {
+               // Para doubles, converter para Double
+               if (inFunction) {
+                   functionBodyBuilder.append("    invokestatic java/lang/Double/valueOf(D)Ljava/lang/Double;\n");
+                   functionBodyBuilder.append("    invokevirtual java/util/ArrayList/add(Ljava/lang/Object;)Z\n");
+                   functionBodyBuilder.append("    pop\n"); // remove o boolean retornado
+               } else {
+                   System.out.println("    invokestatic java/lang/Double/valueOf(D)Ljava/lang/Double;");
+                   System.out.println("    invokevirtual java/util/ArrayList/add(Ljava/lang/Object;)Z");
+                   System.out.println("    pop"); // remove o boolean retornado
+               }
            } else {
-               System.out.println("    invokestatic java/lang/Integer/valueOf(I)Ljava/lang/Integer;");
-               System.out.println("    invokevirtual java/util/ArrayList/add(Ljava/lang/Object;)Z");
-               System.out.println("    pop"); // remove o boolean retornado
+               // Para inteiros, converter para Integer
+               if (inFunction) {
+                   functionBodyBuilder.append("    invokestatic java/lang/Integer/valueOf(I)Ljava/lang/Integer;\n");
+                   functionBodyBuilder.append("    invokevirtual java/util/ArrayList/add(Ljava/lang/Object;)Z\n");
+                   functionBodyBuilder.append("    pop\n"); // remove o boolean retornado
+               } else {
+                   System.out.println("    invokestatic java/lang/Integer/valueOf(I)Ljava/lang/Integer;");
+                   System.out.println("    invokevirtual java/util/ArrayList/add(Ljava/lang/Object;)Z");
+                   System.out.println("    pop"); // remove o boolean retornado
+               }
            }
        }
    ;
@@ -989,16 +1039,45 @@ array_get returns [String valueType, String text]
        {
            // Agora temos array na posição 0 da pilha e index na posição 1
            // ArrayList.get(int) espera [array, index] na pilha
+           
+           // Determinar o tipo dos elementos do array
+           String elementType = arrayElementTypes.get($VAR.text);
+           if (elementType == null) {
+               elementType = "int"; // Tipo padrão se não foi detectado
+           }
+           
            if (inFunction) {
                functionBodyBuilder.append("    invokevirtual java/util/ArrayList/get(I)Ljava/lang/Object;\n");
-               functionBodyBuilder.append("    checkcast java/lang/Integer\n");
-               functionBodyBuilder.append("    invokevirtual java/lang/Integer/intValue()I\n");
+               if (elementType.equals("string")) {
+                   functionBodyBuilder.append("    checkcast java/lang/String\n");
+               } else if (elementType.equals("double")) {
+                   functionBodyBuilder.append("    checkcast java/lang/Double\n");
+                   functionBodyBuilder.append("    invokevirtual java/lang/Double/doubleValue()D\n");
+               } else {
+                   functionBodyBuilder.append("    checkcast java/lang/Integer\n");
+                   functionBodyBuilder.append("    invokevirtual java/lang/Integer/intValue()I\n");
+               }
            } else {
                System.out.println("    invokevirtual java/util/ArrayList/get(I)Ljava/lang/Object;");
-               System.out.println("    checkcast java/lang/Integer");
-               System.out.println("    invokevirtual java/lang/Integer/intValue()I");
+               if (elementType.equals("string")) {
+                   System.out.println("    checkcast java/lang/String");
+               } else if (elementType.equals("double")) {
+                   System.out.println("    checkcast java/lang/Double");
+                   System.out.println("    invokevirtual java/lang/Double/doubleValue()D");
+               } else {
+                   System.out.println("    checkcast java/lang/Integer");
+                   System.out.println("    invokevirtual java/lang/Integer/intValue()I");
+               }
            }
-           $valueType = "ARRAY_GET";
+           
+           // Definir o tipo de retorno baseado no tipo dos elementos
+           if (elementType.equals("string")) {
+               $valueType = "ARRAY_GET_STRING";
+           } else if (elementType.equals("double")) {
+               $valueType = "ARRAY_GET_DOUBLE";
+           } else {
+               $valueType = "ARRAY_GET";
+           }
            $text = $VAR.text;
        }
    ;
