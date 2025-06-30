@@ -60,6 +60,7 @@ ATTRIB    : '=' ;
 MAIN      : 'main' ;
 PRINT     : 'print' ;
 TEXTCOLOR : 'textcolor';
+BEEP      : 'beep' ;
 FUNCTION  : 'procedure' ;
 RETURN    : 'return' ;
 CALL      : 'call' ;
@@ -316,6 +317,7 @@ statement
      typed_assignment     |
      statement_print      |
      statement_textcolor  |
+     statement_beep       |
      statement_if         |
      statement_while      |
      statement_goto       |
@@ -807,6 +809,19 @@ statement_textcolor
                     System.out.println("    invokevirtual java/io/PrintStream/print(Ljava/lang/String;)V");
                 } else {
                     throw new IllegalArgumentException("Invalid color code: " + color);
+                }
+            }
+   ;
+
+statement_beep
+   : BEEP OPEN_P CLOSE_P
+            {
+                if (inFunction) {
+                    functionBodyBuilder.append("    invokestatic java/awt/Toolkit/getDefaultToolkit()Ljava/awt/Toolkit;\n");
+                    functionBodyBuilder.append("    invokevirtual java/awt/Toolkit/beep()V\n");
+                } else {
+                    System.out.println("    invokestatic java/awt/Toolkit/getDefaultToolkit()Ljava/awt/Toolkit;");
+                    System.out.println("    invokevirtual java/awt/Toolkit/beep()V");
                 }
             }
    ;
