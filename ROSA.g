@@ -119,8 +119,8 @@ program
                signature.append(")I");
                
                System.out.println(signature.toString());
-               System.out.println(".limit stack 20");
-               System.out.println(".limit locals 20");
+               System.out.println(".limit stack 100");
+               System.out.println(".limit locals 100");
                
                // Gerar código para armazenar parâmetros nas variáveis locais
                if (functionParameters.containsKey(funcName)) {
@@ -297,8 +297,8 @@ main
                System.out.println("    return");
                System.out.println(".end method\n");
                System.out.println(".method public static main([Ljava/lang/String;)V");
-               System.out.println(".limit stack 20");
-               System.out.println(".limit locals 20");
+               System.out.println(".limit stack 100");
+               System.out.println(".limit locals 100");
            }
        NL* ( statement NL* )* CLOSE_C
            {
