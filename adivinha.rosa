@@ -1,0 +1,84 @@
+main() {
+    print("=== JOGO DE ADIVINHACAO ===")
+    print("Pense em um numero de 0 a 9!")
+    print("Digite 1 para SIM ou 0 para NAO")
+    print("Vou tentar adivinhar seu numero!")
+    print("")
+    
+    print("Seu numero e 5? (1=SIM / 0=NAO):")
+    int resposta = read_int()
+    
+    is (resposta == 1) {
+        print("Acertei! Seu numero era 5!")
+    }
+    not {
+        print("Seu numero e 3? (1=SIM / 0=NAO):")
+        resposta = read_int()
+        
+        is (resposta == 1) {
+            print("Acertei! Seu numero era 3!")
+        }
+        not {
+            print("Seu numero e 7? (1=SIM / 0=NAO):")
+            resposta = read_int()
+            
+            is (resposta == 1) {
+                print("Acertei! Seu numero era 7!")
+            }
+            not {
+                print("Seu numero e 1? (1=SIM / 0=NAO):")
+                resposta = read_int()
+                
+                is (resposta == 1) {
+                    print("Acertei! Seu numero era 1!")
+                }
+                not {
+                    print("Seu numero e 9? (1=SIM / 0=NAO):")
+                    resposta = read_int()
+                    
+                    is (resposta == 1) {
+                        print("Acertei! Seu numero era 9!")
+                    }
+                    not {
+                        print("Seu numero e 2? (1=SIM / 0=NAO):")
+                        resposta = read_int()
+                        
+                        is (resposta == 1) {
+                            print("Acertei! Seu numero era 2!")
+                        }
+                        not {
+                            print("Seu numero e 8? (1=SIM / 0=NAO):")
+                            resposta = read_int()
+                            
+                            is (resposta == 1) {
+                                print("Acertei! Seu numero era 8!")
+                            }
+                            not {
+                                print("Seu numero e 4? (1=SIM / 0=NAO):")
+                                resposta = read_int()
+                                
+                                is (resposta == 1) {
+                                    print("Acertei! Seu numero era 4!")
+                                }
+                                not {
+                                    print("Seu numero e 6? (1=SIM / 0=NAO):")
+                                    resposta = read_int()
+                                    
+                                    is (resposta == 1) {
+                                        print("Acertei! Seu numero era 6!")
+                                    }
+                                    not {
+                                        print("Entao deve ser 0!")
+                                        print("Acertei! Seu numero era 0!")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    print("Obrigado por jogar!")
+}
