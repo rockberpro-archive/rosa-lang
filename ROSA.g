@@ -49,6 +49,7 @@ MINUS     : '-' ;
 TIMES     : '*' ;
 OVER      : '/' ;
 REMAINDER : '%' ;
+DOT       : '.' ;
 OPEN_C    : '{' ;
 CLOSE_C   : '}' ;
 OPEN_P    : '(' ;
@@ -430,6 +431,29 @@ typed_assignment
    ;
 
 value returns [String valueType, String text]
+   : simple_value ( DOT simple_value
+           {
+               // String concatenation: stack starts as [left_operand, right_operand]
+               // We want to call left_operand.concat(String.valueOf(right_operand))
+               if (inFunction) {
+                   functionBodyBuilder.append("    invokestatic java/lang/String/valueOf(I)Ljava/lang/String;\n");
+                   functionBodyBuilder.append("    invokevirtual java/lang/String/concat(Ljava/lang/String;)Ljava/lang/String;\n");
+               } else {
+                   System.out.println("    invokestatic java/lang/String/valueOf(I)Ljava/lang/String;");
+                   System.out.println("    invokevirtual java/lang/String/concat(Ljava/lang/String;)Ljava/lang/String;");
+               }
+               $valueType = "STRING";
+           }
+       )*
+       {
+           if ($valueType == null) {
+               $valueType = $simple_value.valueType;
+               $text = $simple_value.text;
+           }
+       }
+   ;
+
+simple_value returns [String valueType, String text]
    : STRING { 
                 if (inFunction) {
                     functionBodyBuilder.append("    ldc " + $STRING.text + "\n");
@@ -790,12 +814,28 @@ condition returns [String operator]
    ;
 
 expression
-   :   term ( op = ( PLUS | MINUS ) term
+   :   concat_expr ( op = ( PLUS | MINUS ) concat_expr
            { 
                if (inFunction) {
                    functionBodyBuilder.append(($op.type == PLUS) ? "    iadd\n" : "    isub\n");
                } else {
                    System.out.println(($op.type == PLUS) ? "    iadd" : "    isub"); 
+               }
+           }
+       )*
+   ;
+
+concat_expr
+   :   term ( DOT term
+           {
+               // String concatenation: stack starts as [left_operand, right_operand]
+               // We want to call left_operand.concat(String.valueOf(right_operand))
+               if (inFunction) {
+                   functionBodyBuilder.append("    invokestatic java/lang/String/valueOf(I)Ljava/lang/String;\n");
+                   functionBodyBuilder.append("    invokevirtual java/lang/String/concat(Ljava/lang/String;)Ljava/lang/String;\n");
+               } else {
+                   System.out.println("    invokestatic java/lang/String/valueOf(I)Ljava/lang/String;");
+                   System.out.println("    invokevirtual java/lang/String/concat(Ljava/lang/String;)Ljava/lang/String;");
                }
            }
        )*
