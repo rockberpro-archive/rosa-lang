@@ -1,10 +1,10 @@
 procedure maiorvalor(array numeros) {
     int maior = 0
     int valor = 0
-    int length = array_length(numeros)
+    int tamanho = array_length(numeros)
     
     int i = 0
-    aslong(i < length) {
+    aslong(i < tamanho) {
         valor = array_get(numeros, i)
         is (maior < valor) {
             maior = valor
