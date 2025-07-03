@@ -1,3 +1,69 @@
 main() {
-    print("Hello, World!")
+    array palavras
+    array_push(palavras, "casa")
+    array_push(palavras, "carro")
+    array_push(palavras, "livro")
+    array_push(palavras, "computador")
+    array_push(palavras, "telefone")
+    array_push(palavras, "mesa")
+    array_push(palavras, "cadeira")
+    array_push(palavras, "janela")
+    array_push(palavras, "porta")
+    array_push(palavras, "escola")
+    array_push(palavras, "trabalho")
+    array_push(palavras, "familia")
+    array_push(palavras, "amigo")
+    array_push(palavras, "comida")
+    array_push(palavras, "agua")
+    array_push(palavras, "sol")
+    array_push(palavras, "lua")
+    array_push(palavras, "estrela")
+    array_push(palavras, "flores")
+    array_push(palavras, "musica")
+
+    int escolha = 0
+    print("Escolha um numero de 1 a 20")
+    escolha = read_int()
+    is (escolha < 1 ) {
+        print("Numero invalido")
+    }
+    is (escolha > 20) {
+        print("Numero invalido")
+    }
+    escolha = escolha - 1
+
+    string palavra = array_get(palavras, escolha)
+    print(palavra)
+
+    string input = ""
+    int tentativa = 0
+
+    int comprimento = 0
+    comprimento = length(palavra)
+    
+    int deslocamento = 0
+    int laco = 10
+    string letra = ""
+    boolean comparacao = false
+    aslong (laco >= 0) {
+        laco = laco - 1
+
+        print("Chute uma letra:")
+        input = read_string()
+        
+        letra = charat(palavra, deslocamento)
+        comparacao = compare(letra, input)
+        is (comparacao == true) {
+            deslocamento = deslocamento + 1
+            print("Voce acertou uma letra! ")
+
+        }
+        not {
+            print("Você errou!")
+        }
+
+        print("Quantidade de tentativas restantes: ")
+        print(laco)
+    }
+    print("=== FIM DE JOGO ===")
 }
