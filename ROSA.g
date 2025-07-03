@@ -87,6 +87,9 @@ READ_INT    : 'read_int' ;
 READ_STRING : 'read_string' ;
 READ_DOUBLE : 'read_double' ;
 
+// Token para operação de string
+CHARAT      : 'charat' ;
+
 
 VAR     : 'a'..'z'+ ;
 NUM     : '0'..'9' + ;
@@ -524,6 +527,7 @@ simple_value returns [String valueType, String text]
    | read_string { $valueType = $read_string.valueType; $text = $read_string.text; }
    | array_get { $valueType = $array_get.valueType; $text = $array_get.text; }
    | array_length { $valueType = $array_length.valueType; $text = $array_length.text; }
+   | charat { $valueType = $charat.valueType; $text = $charat.text; }
    ;
 
 statement_if
@@ -947,6 +951,7 @@ factor
    |   function_call
    |   array_get
    |   array_length
+   |   charat
    ;
 
 array_push
@@ -1161,9 +1166,43 @@ array_length returns [String valueType, String text]
                System.err.println("Variable " + $VAR.text + " is not an array or undefined");
                $valueType = "UNDEF";
                $text = $VAR.text;
+           }       }
+   ;
+
+charat returns [String valueType, String text]
+   : CHARAT OPEN_P VAR COMMA
+       {
+           // Primeiro carregamos a string
+           Integer v = memory.get($VAR.text);
+           if (v != null && variableTypes.get($VAR.text).equals("string")) {
+               if (inFunction) {
+                   functionBodyBuilder.append("    aload " + v + "\n");
+               } else {
+                   System.out.println("    aload " + v);
+               }
+           } else {
+               System.err.println("Variable " + $VAR.text + " is not a string or undefined");
            }
        }
-    ;
+       expression CLOSE_P
+       {
+           // Agora temos string na posição 0 da pilha e index na posição 1
+           // String.charAt(int) espera [string, index] na pilha
+           
+           if (inFunction) {
+               functionBodyBuilder.append("    invokevirtual java/lang/String/charAt(I)C\n");
+               // Converter char para string para compatibilidade
+               functionBodyBuilder.append("    invokestatic java/lang/String/valueOf(C)Ljava/lang/String;\n");
+           } else {
+               System.out.println("    invokevirtual java/lang/String/charAt(I)C");
+               // Converter char para string para compatibilidade
+               System.out.println("    invokestatic java/lang/String/valueOf(C)Ljava/lang/String;");
+           }
+           
+           $valueType = "STRING";
+           $text = $VAR.text + ".charAt()";
+       }
+   ;
 
 read_statement
    : VAR ATTRIB READ_INT OPEN_P CLOSE_P
