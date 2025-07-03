@@ -107,6 +107,61 @@ DOUBLE  : ('0'..'9')+ '.' ('0'..'9')+ ;
 
 /*---------------- PARSER RULES ----------------*/
 
+statement
+   : assignment           |
+     typed_assignment     |
+     statement_print      |
+     statement_textcolor  |
+     statement_beep       |
+     statement_if         |
+     statement_while      |
+     statement_goto       |
+     statement_label      |
+     function_call        |
+     array_push           |
+     array_pop            |
+     array_set            |
+     array_get            |
+     read_statement
+   ;
+
+main
+   :  MAIN OPEN_P CLOSE_P NL* OPEN_C
+           {
+               System.out.println(".source ROSATest.j");
+               System.out.println(".class  public ROSATest");
+               System.out.println(".super  java/lang/Object\n");
+               System.out.println(".field public static scanner Ljava/util/Scanner;\n");
+               System.out.println(".method public <init>()V");
+               System.out.println("    aload_0");
+               System.out.println("    invokenonvirtual java/lang/Object/<init>()V");
+               System.out.println("    return");
+               System.out.println(".end method\n");
+               System.out.println(".method static <clinit>()V");
+               System.out.println(".limit stack 5");
+               System.out.println(".limit locals 0");
+               System.out.println("    new java/util/Scanner");
+               System.out.println("    dup");
+               System.out.println("    getstatic java/lang/System/in Ljava/io/InputStream;");
+               System.out.println("    invokespecial java/util/Scanner/<init>(Ljava/io/InputStream;)V");
+               System.out.println("    dup");
+               System.out.println("    getstatic java/util/Locale/US Ljava/util/Locale;");
+               System.out.println("    invokevirtual java/util/Scanner/useLocale(Ljava/util/Locale;)Ljava/util/Scanner;");
+               System.out.println("    pop");
+               System.out.println("    putstatic ROSATest/scanner Ljava/util/Scanner;");
+               System.out.println("    return");
+               System.out.println(".end method\n");
+               System.out.println(".method public static main([Ljava/lang/String;)V");
+               System.out.println(".limit stack 20");
+               System.out.println(".limit locals 20");
+           }
+       NL* ( statement NL* )* CLOSE_C
+           {
+               System.out.println("    return");
+               System.out.println(".end method");
+           }
+   ;
+
 program
    : NL* (function_def NL*)* main NL* (function_def NL*)*
        {
@@ -173,6 +228,154 @@ program
                System.out.println(".end method\n");
            }
        }
+   ;
+
+condition returns [String operator]
+   : expression op = ( '==' | '!=' | '<' | '<=' | '>' | '>=' ) expression
+        {
+            $operator = $op.text;
+        }
+   ;
+
+expression
+   :   concat_expr ( op = ( PLUS | MINUS ) concat_expr
+           { 
+               if (inFunction) {
+                   functionBodyBuilder.append(($op.type == PLUS) ? "    iadd\n" : "    isub\n");
+               } else {
+                   System.out.println(($op.type == PLUS) ? "    iadd" : "    isub"); 
+               }
+           }
+       )*
+   ;
+
+concat_expr
+   :   term ( DOT term
+           {
+               // String concatenation: stack starts as [left_operand, right_operand]
+               // We want to call left_operand.concat(String.valueOf(right_operand))
+               if (inFunction) {
+                   functionBodyBuilder.append("    invokestatic java/lang/String/valueOf(I)Ljava/lang/String;\n");
+                   functionBodyBuilder.append("    invokevirtual java/lang/String/concat(Ljava/lang/String;)Ljava/lang/String;\n");
+               } else {
+                   System.out.println("    invokestatic java/lang/String/valueOf(I)Ljava/lang/String;");
+                   System.out.println("    invokevirtual java/lang/String/concat(Ljava/lang/String;)Ljava/lang/String;");
+               }
+           }
+       )*
+   ;
+
+term
+   :   factor ( op = ( TIMES | OVER ) factor
+            { 
+                if (inFunction) {
+                    functionBodyBuilder.append(($op.type == TIMES) ? "    imul\n" : "    idiv\n");
+                } else {
+                    System.out.println(($op.type == TIMES) ? "    imul" : "    idiv"); 
+                }
+            }
+       )*
+   ;
+
+factor
+   :   NUM
+            { 
+                if (inFunction) {
+                    functionBodyBuilder.append("    ldc " + $NUM.text + "\n");
+                } else {
+                    System.out.println("    ldc " + $NUM.text); 
+                }
+            }
+   |   VAR
+            {
+                Integer v = memory.get($VAR.text);
+                if (v != null) {
+                    String varType = variableTypes.get($VAR.text);
+                    if (varType != null) {
+                        if (varType.equals("double")) {
+                            if (inFunction) {
+                                functionBodyBuilder.append("    dload " + v.intValue() + "\n");
+                            } else {
+                                System.out.println("    dload " + v.intValue());
+                            }
+                        } else if (varType.equals("string")) {
+                            if (inFunction) {
+                                functionBodyBuilder.append("    aload " + v.intValue() + "\n");
+                            } else {
+                                System.out.println("    aload " + v.intValue());
+                            }
+                        } else if (varType.equals("array")) {
+                            if (inFunction) {
+                                functionBodyBuilder.append("    aload " + v.intValue() + "\n");
+                            } else {
+                                System.out.println("    aload " + v.intValue());
+                            }
+                        } else if (varType.equals("boolean")) {
+                            if (inFunction) {
+                                functionBodyBuilder.append("    iload " + v.intValue() + "\n");
+                            } else {
+                                System.out.println("    iload " + v.intValue());
+                            }
+                        } else {
+                            if (inFunction) {
+                                functionBodyBuilder.append("    iload " + v.intValue() + "\n");
+                            } else {
+                                System.out.println("    iload " + v.intValue());
+                            }
+                        }
+                    } else {
+                        // Tipo não definido, assume int
+                        if (inFunction) {
+                            functionBodyBuilder.append("    iload " + v.intValue() + "\n");
+                        } else {
+                            System.out.println("    iload " + v.intValue());
+                        }
+                    }
+                } else {
+                    System.err.println("undefined variable " + $VAR.text);
+                }
+            }
+   |   STRING
+            { 
+                if (inFunction) {
+                    functionBodyBuilder.append("    ldc " + $STRING.text + "\n");
+                } else {
+                    System.out.println("    ldc " + $STRING.text); 
+                }
+            }
+   |   DOUBLE
+            { 
+                if (inFunction) {
+                    functionBodyBuilder.append("    ldc2_w " + $DOUBLE.text + "\n");
+                } else {
+                    System.out.println("    ldc2_w " + $DOUBLE.text); 
+                }
+            }
+   |   read_int
+   |   read_double
+   |   read_string
+   |   function_call
+   |   array_get
+   |   array_length
+   |   charat
+   |   length
+   |   compare
+   |   TRUE
+            { 
+                if (inFunction) {
+                    functionBodyBuilder.append("    iconst_1\n");
+                } else {
+                    System.out.println("    iconst_1"); 
+                }
+            }
+   |   FALSE
+            { 
+                if (inFunction) {
+                    functionBodyBuilder.append("    iconst_0\n");
+                } else {
+                    System.out.println("    iconst_0"); 
+                }
+            }
    ;
 
 function_def
@@ -289,62 +492,6 @@ function_call returns [String valueType, String text]
 
 argument_list
    : expression (COMMA expression)*
-   ;
-
-
-main
-   :  MAIN OPEN_P CLOSE_P NL* OPEN_C
-           {
-               System.out.println(".source ROSATest.j");
-               System.out.println(".class  public ROSATest");
-               System.out.println(".super  java/lang/Object\n");
-               System.out.println(".field public static scanner Ljava/util/Scanner;\n");
-               System.out.println(".method public <init>()V");
-               System.out.println("    aload_0");
-               System.out.println("    invokenonvirtual java/lang/Object/<init>()V");
-               System.out.println("    return");
-               System.out.println(".end method\n");
-               System.out.println(".method static <clinit>()V");
-               System.out.println(".limit stack 5");
-               System.out.println(".limit locals 0");
-               System.out.println("    new java/util/Scanner");
-               System.out.println("    dup");
-               System.out.println("    getstatic java/lang/System/in Ljava/io/InputStream;");
-               System.out.println("    invokespecial java/util/Scanner/<init>(Ljava/io/InputStream;)V");
-               System.out.println("    dup");
-               System.out.println("    getstatic java/util/Locale/US Ljava/util/Locale;");
-               System.out.println("    invokevirtual java/util/Scanner/useLocale(Ljava/util/Locale;)Ljava/util/Scanner;");
-               System.out.println("    pop");
-               System.out.println("    putstatic ROSATest/scanner Ljava/util/Scanner;");
-               System.out.println("    return");
-               System.out.println(".end method\n");
-               System.out.println(".method public static main([Ljava/lang/String;)V");
-               System.out.println(".limit stack 20");
-               System.out.println(".limit locals 20");
-           }
-       NL* ( statement NL* )* CLOSE_C
-           {
-               System.out.println("    return");
-               System.out.println(".end method");
-           }
-   ;
-
-statement
-   : assignment           |
-     typed_assignment     |
-     statement_print      |
-     statement_textcolor  |
-     statement_beep       |
-     statement_if         |
-     statement_while      |
-     statement_goto       |
-     statement_label      |
-     function_call        |
-     array_push           |
-     array_pop            |
-     array_set            |
-     array_get            |
-     read_statement
    ;
 
 assignment
@@ -883,154 +1030,6 @@ statement_beep
                 } else {
                     System.out.println("    invokestatic java/awt/Toolkit/getDefaultToolkit()Ljava/awt/Toolkit;");
                     System.out.println("    invokevirtual java/awt/Toolkit/beep()V");
-                }
-            }
-   ;
-
-condition returns [String operator]
-   : expression op = ( '==' | '!=' | '<' | '<=' | '>' | '>=' ) expression
-        {
-            $operator = $op.text;
-        }
-   ;
-
-expression
-   :   concat_expr ( op = ( PLUS | MINUS ) concat_expr
-           { 
-               if (inFunction) {
-                   functionBodyBuilder.append(($op.type == PLUS) ? "    iadd\n" : "    isub\n");
-               } else {
-                   System.out.println(($op.type == PLUS) ? "    iadd" : "    isub"); 
-               }
-           }
-       )*
-   ;
-
-concat_expr
-   :   term ( DOT term
-           {
-               // String concatenation: stack starts as [left_operand, right_operand]
-               // We want to call left_operand.concat(String.valueOf(right_operand))
-               if (inFunction) {
-                   functionBodyBuilder.append("    invokestatic java/lang/String/valueOf(I)Ljava/lang/String;\n");
-                   functionBodyBuilder.append("    invokevirtual java/lang/String/concat(Ljava/lang/String;)Ljava/lang/String;\n");
-               } else {
-                   System.out.println("    invokestatic java/lang/String/valueOf(I)Ljava/lang/String;");
-                   System.out.println("    invokevirtual java/lang/String/concat(Ljava/lang/String;)Ljava/lang/String;");
-               }
-           }
-       )*
-   ;
-
-term
-   :   factor ( op = ( TIMES | OVER ) factor
-            { 
-                if (inFunction) {
-                    functionBodyBuilder.append(($op.type == TIMES) ? "    imul\n" : "    idiv\n");
-                } else {
-                    System.out.println(($op.type == TIMES) ? "    imul" : "    idiv"); 
-                }
-            }
-       )*
-   ;
-
-factor
-   :   NUM
-            { 
-                if (inFunction) {
-                    functionBodyBuilder.append("    ldc " + $NUM.text + "\n");
-                } else {
-                    System.out.println("    ldc " + $NUM.text); 
-                }
-            }
-   |   VAR
-            {
-                Integer v = memory.get($VAR.text);
-                if (v != null) {
-                    String varType = variableTypes.get($VAR.text);
-                    if (varType != null) {
-                        if (varType.equals("double")) {
-                            if (inFunction) {
-                                functionBodyBuilder.append("    dload " + v.intValue() + "\n");
-                            } else {
-                                System.out.println("    dload " + v.intValue());
-                            }
-                        } else if (varType.equals("string")) {
-                            if (inFunction) {
-                                functionBodyBuilder.append("    aload " + v.intValue() + "\n");
-                            } else {
-                                System.out.println("    aload " + v.intValue());
-                            }
-                        } else if (varType.equals("array")) {
-                            if (inFunction) {
-                                functionBodyBuilder.append("    aload " + v.intValue() + "\n");
-                            } else {
-                                System.out.println("    aload " + v.intValue());
-                            }
-                        } else if (varType.equals("boolean")) {
-                            if (inFunction) {
-                                functionBodyBuilder.append("    iload " + v.intValue() + "\n");
-                            } else {
-                                System.out.println("    iload " + v.intValue());
-                            }
-                        } else {
-                            if (inFunction) {
-                                functionBodyBuilder.append("    iload " + v.intValue() + "\n");
-                            } else {
-                                System.out.println("    iload " + v.intValue());
-                            }
-                        }
-                    } else {
-                        // Tipo não definido, assume int
-                        if (inFunction) {
-                            functionBodyBuilder.append("    iload " + v.intValue() + "\n");
-                        } else {
-                            System.out.println("    iload " + v.intValue());
-                        }
-                    }
-                } else {
-                    System.err.println("undefined variable " + $VAR.text);
-                }
-            }
-   |   STRING
-            { 
-                if (inFunction) {
-                    functionBodyBuilder.append("    ldc " + $STRING.text + "\n");
-                } else {
-                    System.out.println("    ldc " + $STRING.text); 
-                }
-            }
-   |   DOUBLE
-            { 
-                if (inFunction) {
-                    functionBodyBuilder.append("    ldc2_w " + $DOUBLE.text + "\n");
-                } else {
-                    System.out.println("    ldc2_w " + $DOUBLE.text); 
-                }
-            }
-   |   read_int
-   |   read_double
-   |   read_string
-   |   function_call
-   |   array_get
-   |   array_length
-   |   charat
-   |   length
-   |   compare
-   |   TRUE
-            { 
-                if (inFunction) {
-                    functionBodyBuilder.append("    iconst_1\n");
-                } else {
-                    System.out.println("    iconst_1"); 
-                }
-            }
-   |   FALSE
-            { 
-                if (inFunction) {
-                    functionBodyBuilder.append("    iconst_0\n");
-                } else {
-                    System.out.println("    iconst_0"); 
                 }
             }
    ;
