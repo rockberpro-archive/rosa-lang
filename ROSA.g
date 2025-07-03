@@ -16,18 +16,18 @@
 
 @members
 {
-   Map<String, Integer> memory = new LinkedHashMap<String, Integer>();
+   Map<String, Integer> memory = new LinkedHashMap<String, Integer>(); // Para armazenar parâmetros e variáveis
    Map<String, String> variableTypes = new LinkedHashMap<String, String>(); // Para armazenar tipos das variáveis
    Map<String, String> arrayElementTypes = new LinkedHashMap<String, String>(); // Para armazenar tipos dos elementos dos arrays
-   Map<String, Integer> functions = new LinkedHashMap<String, Integer>();
-   Map<String, String> functionBodies = new LinkedHashMap<String, String>();
+   Map<String, Integer> functions = new LinkedHashMap<String, Integer>(); // Para armazenar funções
+   Map<String, String> functionBodies = new LinkedHashMap<String, String>(); // Para armazenar corpos das funções
    Map<String, ArrayList<String>> functionParameters = new LinkedHashMap<String, ArrayList<String>>(); // Para armazenar parâmetros das funções
    Map<String, ArrayList<String>> functionParameterTypes = new LinkedHashMap<String, ArrayList<String>>(); // Para armazenar tipos dos parâmetros
-   Integer counter = 1;
-   Integer functionCounter = 1;
-   boolean inFunction = false;
-   StringBuilder functionBodyBuilder = new StringBuilder();
-   String currentFunctionName = "";
+   Integer counter = 1; // Contador para slots de memória
+   Integer functionCounter = 1; // Contador para funções
+   boolean inFunction = false; // Indica se estamos dentro de uma função
+   StringBuilder functionBodyBuilder = new StringBuilder(); // Para construir o corpo da função
+   String currentFunctionName = ""; // Nome da função atual
    static Scanner scanner = new Scanner(System.in); // Scanner global para leitura
 
    public static void main(String[] args) throws Exception
