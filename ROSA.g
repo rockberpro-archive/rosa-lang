@@ -90,6 +90,10 @@ READ_DOUBLE : 'read_double' ;
 // Token para operação de string
 CHARAT      : 'charat' ;
 
+// Tokens para valores booleanos
+TRUE        : 'true' ;
+FALSE       : 'false' ;
+BOOLEAN_TYPE : 'boolean' ;
 
 VAR     : 'a'..'z'+ ;
 NUM     : '0'..'9' + ;
@@ -121,6 +125,8 @@ program
                            signature.append("Ljava/lang/String;");
                        } else if (paramType.equals("array")) {
                            signature.append("Ljava/util/ArrayList;");
+                       } else if (paramType.equals("boolean")) {
+                           signature.append("Z");
                        }
                    }
                }
@@ -151,6 +157,9 @@ program
                            } else if (paramType.equals("array")) {
                                System.out.println("    aload " + i);
                                System.out.println("    astore " + slot);
+                           } else if (paramType.equals("boolean")) {
+                               System.out.println("    iload " + i);
+                               System.out.println("    istore " + slot);
                            }
                        }
                    }
@@ -220,6 +229,7 @@ type_spec returns [String typeValue]
    | DOUBLE_TYPE { $typeValue = "double"; }
    | STRING_TYPE { $typeValue = "string"; }
    | ARRAY_TYPE  { $typeValue = "array"; }
+   | BOOLEAN_TYPE { $typeValue = "boolean"; }
    ;
 
 return_statement
@@ -253,6 +263,8 @@ function_call returns [String valueType, String text]
                            signature.append("Ljava/lang/String;");
                        } else if (paramType.equals("array")) {
                            signature.append("Ljava/util/ArrayList;");
+                       } else if (paramType.equals("boolean")) {
+                           signature.append("Z");
                        }
                    }
                }
@@ -346,6 +358,8 @@ assignment
                    counter++; // Double ocupa 2 slots
                } else if ($value.valueType.equals("READ_STRING") || $value.valueType.equals("STRING") || $value.valueType.equals("STRING_VAR")) {
                    variableTypes.put($VAR.text, "string");
+               } else if ($value.valueType.equals("BOOLEAN") || $value.valueType.equals("BOOLEAN_VAR")) {
+                   variableTypes.put($VAR.text, "boolean");
                } else {
                    variableTypes.put($VAR.text, "int");
                }
@@ -438,6 +452,18 @@ typed_assignment
                System.out.println("    astore " + memory.get($VAR.text));
            }
        }
+   | BOOLEAN_TYPE VAR ATTRIB value
+       {
+           if (!memory.containsKey($VAR.text)) {
+               memory.put($VAR.text, counter++);
+               variableTypes.put($VAR.text, "boolean");
+           }
+           if (inFunction) {
+               functionBodyBuilder.append("    istore " + memory.get($VAR.text) + "\n");
+           } else {
+               System.out.println("    istore " + memory.get($VAR.text));
+           }
+       }
    ;
 
 value returns [String valueType, String text]
@@ -506,6 +532,13 @@ simple_value returns [String valueType, String text]
                             System.out.println("    aload " + v);
                         }
                         $valueType = "STRING_VAR";
+                    } else if (varType != null && varType.equals("boolean")) {
+                        if (inFunction) {
+                            functionBodyBuilder.append("    iload " + v + "\n");
+                        } else {
+                            System.out.println("    iload " + v);
+                        }
+                        $valueType = "BOOLEAN_VAR";
                     } else {
                         if (inFunction) {
                             functionBodyBuilder.append("    iload " + v + "\n");
@@ -528,6 +561,22 @@ simple_value returns [String valueType, String text]
    | array_get { $valueType = $array_get.valueType; $text = $array_get.text; }
    | array_length { $valueType = $array_length.valueType; $text = $array_length.text; }
    | charat { $valueType = $charat.valueType; $text = $charat.text; }
+   | TRUE { 
+                if (inFunction) {
+                    functionBodyBuilder.append("    iconst_1\n");
+                } else {
+                    System.out.println("    iconst_1");
+                }
+                $valueType = "BOOLEAN"; $text = "true"; 
+            }
+   | FALSE { 
+                if (inFunction) {
+                    functionBodyBuilder.append("    iconst_0\n");
+                } else {
+                    System.out.println("    iconst_0");
+                }
+                $valueType = "BOOLEAN"; $text = "false"; 
+            }
    ;
 
 statement_if
@@ -749,6 +798,8 @@ statement_print
                         functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(I)V\n");
                     } else if ($value.valueType.equals("STRING_VAR") || $value.valueType.equals("STRING")) {
                         functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V\n");
+                    } else if ($value.valueType.equals("BOOLEAN") || $value.valueType.equals("BOOLEAN_VAR")) {
+                        functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(Z)V\n");
                     } else if ($value.valueType.equals("ARRAY_LENGTH") || $value.valueType.equals("ARRAY_GET")) {
                         functionBodyBuilder.append("    invokevirtual java/io/PrintStream/println(I)V\n");
                     } else if ($value.valueType.equals("ARRAY_GET_STRING")) {
@@ -773,6 +824,8 @@ statement_print
                         System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
                     } else if ($value.valueType.equals("STRING_VAR") || $value.valueType.equals("STRING")) {
                         System.out.println("    invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V");
+                    } else if ($value.valueType.equals("BOOLEAN") || $value.valueType.equals("BOOLEAN_VAR")) {
+                        System.out.println("    invokevirtual java/io/PrintStream/println(Z)V");
                     } else if ($value.valueType.equals("ARRAY_LENGTH") || $value.valueType.equals("ARRAY_GET")) {
                         System.out.println("    invokevirtual java/io/PrintStream/println(I)V");
                     } else if ($value.valueType.equals("ARRAY_GET_STRING")) {
@@ -910,6 +963,12 @@ factor
                             } else {
                                 System.out.println("    aload " + v.intValue());
                             }
+                        } else if (varType.equals("boolean")) {
+                            if (inFunction) {
+                                functionBodyBuilder.append("    iload " + v.intValue() + "\n");
+                            } else {
+                                System.out.println("    iload " + v.intValue());
+                            }
                         } else {
                             if (inFunction) {
                                 functionBodyBuilder.append("    iload " + v.intValue() + "\n");
@@ -952,6 +1011,22 @@ factor
    |   array_get
    |   array_length
    |   charat
+   |   TRUE
+            { 
+                if (inFunction) {
+                    functionBodyBuilder.append("    iconst_1\n");
+                } else {
+                    System.out.println("    iconst_1"); 
+                }
+            }
+   |   FALSE
+            { 
+                if (inFunction) {
+                    functionBodyBuilder.append("    iconst_0\n");
+                } else {
+                    System.out.println("    iconst_0"); 
+                }
+            }
    ;
 
 array_push
