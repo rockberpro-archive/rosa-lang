@@ -43,7 +43,7 @@
 
 /*---------------- LEXER RULES ----------------*/
 
-
+// Tokens para operadores e símbolos
 PLUS      : '+' ;
 MINUS     : '-' ;
 TIMES     : '*' ;
@@ -56,7 +56,7 @@ OPEN_P    : '(' ;
 CLOSE_P   : ')' ;
 ATTRIB    : '=' ;
 
-
+// Tokens para controle de fluxo
 MAIN      : 'main' ;
 PRINT     : 'print' ;
 TEXTCOLOR : 'textcolor';
@@ -97,6 +97,7 @@ TRUE        : 'true' ;
 FALSE       : 'false' ;
 BOOLEAN_TYPE : 'boolean' ;
 
+// Regex para variáveis e números
 VAR     : 'a'..'z'+ ;
 NUM     : '0'..'9' + ;
 NL      : ('\r')? '\n' { skip(); } ;
