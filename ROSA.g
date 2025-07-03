@@ -87,8 +87,9 @@ READ_INT    : 'read_int' ;
 READ_STRING : 'read_string' ;
 READ_DOUBLE : 'read_double' ;
 
-// Token para operação de string
+// Tokens para operações de string
 CHARAT      : 'charat' ;
+LENGTH      : 'length' ;
 
 // Tokens para valores booleanos
 TRUE        : 'true' ;
@@ -561,6 +562,7 @@ simple_value returns [String valueType, String text]
    | array_get { $valueType = $array_get.valueType; $text = $array_get.text; }
    | array_length { $valueType = $array_length.valueType; $text = $array_length.text; }
    | charat { $valueType = $charat.valueType; $text = $charat.text; }
+   | length { $valueType = $length.valueType; $text = $length.text; }
    | TRUE { 
                 if (inFunction) {
                     functionBodyBuilder.append("    iconst_1\n");
@@ -1011,6 +1013,7 @@ factor
    |   array_get
    |   array_length
    |   charat
+   |   length
    |   TRUE
             { 
                 if (inFunction) {
@@ -1399,3 +1402,39 @@ read_string returns [String valueType, String text]
                  $text = "read_string()";
             }
     ;
+
+length returns [String valueType, String text]
+   : LENGTH OPEN_P VAR CLOSE_P
+       {
+           // Primeiro carregamos a string variável
+           Integer v = memory.get($VAR.text);
+           if (v != null && variableTypes.get($VAR.text).equals("string")) {
+               if (inFunction) {
+                   functionBodyBuilder.append("    aload " + v + "\n");
+                   functionBodyBuilder.append("    invokevirtual java/lang/String/length()I\n");
+               } else {
+                   System.out.println("    aload " + v);
+                   System.out.println("    invokevirtual java/lang/String/length()I");
+               }
+               $valueType = "INT";
+               $text = $VAR.text + ".length()";
+           } else {
+               System.err.println("Variable " + $VAR.text + " is not a string or undefined");
+               $valueType = "UNDEF";
+               $text = $VAR.text;
+           }
+       }
+   | LENGTH OPEN_P STRING CLOSE_P
+       {
+           // Para string literal
+           if (inFunction) {
+               functionBodyBuilder.append("    ldc " + $STRING.text + "\n");
+               functionBodyBuilder.append("    invokevirtual java/lang/String/length()I\n");
+           } else {
+               System.out.println("    ldc " + $STRING.text);
+               System.out.println("    invokevirtual java/lang/String/length()I");
+           }
+           $valueType = "INT";
+           $text = $STRING.text + ".length()";
+       }
+   ;
