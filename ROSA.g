@@ -90,6 +90,7 @@ READ_DOUBLE : 'read_double' ;
 // Tokens para operações de string
 CHARAT      : 'charat' ;
 LENGTH      : 'length' ;
+COMPARE     : 'compare' ;
 
 // Tokens para valores booleanos
 TRUE        : 'true' ;
@@ -563,6 +564,7 @@ simple_value returns [String valueType, String text]
    | array_length { $valueType = $array_length.valueType; $text = $array_length.text; }
    | charat { $valueType = $charat.valueType; $text = $charat.text; }
    | length { $valueType = $length.valueType; $text = $length.text; }
+   | compare { $valueType = $compare.valueType; $text = $compare.text; }
    | TRUE { 
                 if (inFunction) {
                     functionBodyBuilder.append("    iconst_1\n");
@@ -1014,6 +1016,7 @@ factor
    |   array_length
    |   charat
    |   length
+   |   compare
    |   TRUE
             { 
                 if (inFunction) {
@@ -1436,5 +1439,91 @@ length returns [String valueType, String text]
            }
            $valueType = "INT";
            $text = $STRING.text + ".length()";
+       }
+   ;
+
+compare returns [String valueType, String text]
+   : COMPARE OPEN_P var1=VAR COMMA var2=VAR CLOSE_P
+       {
+           // Comparar duas variáveis string
+           Integer v1 = memory.get($var1.text);
+           Integer v2 = memory.get($var2.text);
+           if (v1 != null && variableTypes.get($var1.text).equals("string") &&
+               v2 != null && variableTypes.get($var2.text).equals("string")) {
+               if (inFunction) {
+                   functionBodyBuilder.append("    aload " + v1 + "\n");
+                   functionBodyBuilder.append("    aload " + v2 + "\n");
+                   functionBodyBuilder.append("    invokevirtual java/lang/String/equals(Ljava/lang/Object;)Z\n");
+               } else {
+                   System.out.println("    aload " + v1);
+                   System.out.println("    aload " + v2);
+                   System.out.println("    invokevirtual java/lang/String/equals(Ljava/lang/Object;)Z");
+               }
+               $valueType = "BOOLEAN";
+               $text = $var1.text + ".equals(" + $var2.text + ")";
+           } else {
+               System.err.println("One or both variables are not strings or undefined");
+               $valueType = "UNDEF";
+               $text = "compare()";
+           }
+       }
+   | COMPARE OPEN_P VAR COMMA STRING CLOSE_P
+       {
+           // Comparar variável string com string literal
+           Integer v = memory.get($VAR.text);
+           if (v != null && variableTypes.get($VAR.text).equals("string")) {
+               if (inFunction) {
+                   functionBodyBuilder.append("    aload " + v + "\n");
+                   functionBodyBuilder.append("    ldc " + $STRING.text + "\n");
+                   functionBodyBuilder.append("    invokevirtual java/lang/String/equals(Ljava/lang/Object;)Z\n");
+               } else {
+                   System.out.println("    aload " + v);
+                   System.out.println("    ldc " + $STRING.text);
+                   System.out.println("    invokevirtual java/lang/String/equals(Ljava/lang/Object;)Z");
+               }
+               $valueType = "BOOLEAN";
+               $text = $VAR.text + ".equals(" + $STRING.text + ")";
+           } else {
+               System.err.println("Variable " + $VAR.text + " is not a string or undefined");
+               $valueType = "UNDEF";
+               $text = "compare()";
+           }
+       }
+   | COMPARE OPEN_P STRING COMMA VAR CLOSE_P
+       {
+           // Comparar string literal com variável string
+           Integer v = memory.get($VAR.text);
+           if (v != null && variableTypes.get($VAR.text).equals("string")) {
+               if (inFunction) {
+                   functionBodyBuilder.append("    ldc " + $STRING.text + "\n");
+                   functionBodyBuilder.append("    aload " + v + "\n");
+                   functionBodyBuilder.append("    invokevirtual java/lang/String/equals(Ljava/lang/Object;)Z\n");
+               } else {
+                   System.out.println("    ldc " + $STRING.text);
+                   System.out.println("    aload " + v);
+                   System.out.println("    invokevirtual java/lang/String/equals(Ljava/lang/Object;)Z");
+               }
+               $valueType = "BOOLEAN";
+               $text = $STRING.text + ".equals(" + $VAR.text + ")";
+           } else {
+               System.err.println("Variable " + $VAR.text + " is not a string or undefined");
+               $valueType = "UNDEF";
+               $text = "compare()";
+           }
+       }
+   | COMPARE OPEN_P str1=STRING COMMA str2=STRING CLOSE_P
+       {
+           // Comparar duas strings literais
+           if (inFunction) {
+               functionBodyBuilder.append("    ldc " + $str1.text + "\n");
+               functionBodyBuilder.append("    ldc " + $str2.text + "\n");
+               functionBodyBuilder.append("    invokevirtual java/lang/String/equals(Ljava/lang/Object;)Z\n");
+           } else {
+               System.out.println("    ldc " + $str1.text);
+               System.out.println("    ldc " + $str2.text);
+               System.out.println("    invokevirtual java/lang/String/equals(Ljava/lang/Object;)Z");
+           }
+           $valueType = "BOOLEAN";
+           $text = $str1.text + ".equals(" + $str2.text + ")";
        }
    ;
